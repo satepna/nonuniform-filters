@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # F4 = [(1 / dt0dt1) / q0]
 
 # a1 = (F3 / F4 - 2) / dt1
-# a2 = [1 - (1 - F3) / F4] / dt0dt1
+# a2 = [1 + (1 - F3) / F4] / dt0dt1
 # b0 = F2 / F4
 # b1 = (-F1 - 2F2) / F4 / dt1
 # b2 = (F0 + F1 + F2) / F4 / dt0dt1
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     print F0, F1, F2, F3, F4
 
     a1 = (F3 / F4 - 2) / dt1
-    a2 = (1 - (1 - F3) / F4) / dt0dt1
+    a2 = (1 + (1 - F3) / F4) / dt0dt1
     b0 = F2 / F4
     b1 = (-F1 - 2*F2) / F4 / dt1
     b2 = (F0 + F1 + F2) / F4 / dt0dt1

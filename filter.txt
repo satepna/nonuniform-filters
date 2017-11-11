@@ -31,13 +31,21 @@ F4(1 + a1dt1 + a2dt0dt1) = 1
 
 1 + a1dt1 + a2dt0dt1 = (2 + a1dt1) / F3
 1 + a1dt1 + a2dt0dt1 = 1 / F4
-
+(2 + a1dt1) / F3 = 1 / F4
+2 + a1dt1 = F3 / F4
+a1dt1 = F3 / F4 - 2
 a1 = (F3 / F4 - 2) / dt1
 
 F4 + F4a1dt1 + F4a2dt0dt1 = 1
+F4a2dt0dt1 = 1 - F4 - F4a1dt1
+a2dt0dt1 = 1/F4 - 1 - a1dt1
+a2 = 1/F4/dt0dt1 - 1/dt0dt1 - a1dt1/dt0dt1
 a2 = 1/F4/dt0dt1 - 1/dt0dt1 - a1/dt0
 a2 = 1/F4/dt0dt1 - 1/dt0dt1 - (F3 / F4 - 2) / dt0dt1
-a2 = [1 - (1 - F3) / F4] / dt0dt1
+a2 = (1/F4 - 1 - (F3 / F4 - 2)) / dt0dt1
+a2 = (1/F4 - 1 - F3 / F4 + 2) / dt0dt1
+a2 = (1 + 1/F4 - F3 / F4) / dt0dt1
+a2 = [1 + (1 - F3) / F4] / dt0dt1
 
 (1 + a1dt1 + a2dt0dt1) = b0 / F2
 (1 + a1dt1 + a2dt0dt1) = 1 / F4
