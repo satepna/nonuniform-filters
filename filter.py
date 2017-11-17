@@ -56,52 +56,45 @@ def test(b, a, dt, name):
     plt.savefig('%s.png' % name)
 
 def test_missing():
-    t = np.arange(0.0, 2.0, 0.02)
+    freq = 50.0
+    cutoff = 5.0
+    dt = 1.0 / freq
+    t = np.arange(0.0, 2.0, dt)
     mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
-    t = t[mask]
-    # t = np.delete(t, 50)
-    # t = np.delete(t, 60)
+    neg_mask = [i for i in range(len(t)) if i not in mask]
+    # t = t[mask]
     x = np.sin(2 * np.pi * t)
+    x[neg_mask] = 0.0
 
-    b50, a50 = sig.butter(2, 10.0 / 25.0)
-    b25, a25 = sig.butter(2, 10.0 / 12.5)
-    # b25, a25 = sig.butter(2, 10.0 / 17)
-    # F = decompose(b50, a50, 0.02)
-    # b25, a25 = recompose(F, 0.04, 0.02)
+    b = sig.firwin(15, cutoff * dt)
+    b2 = (cutoff * dt) * np.sinc(cutoff * dt * np.arange(-7, 7))
+    a = [1.0]
+    # plt.plot(b, 'o')
+    # plt.plot(b2, 's')
+    # plt.grid()
+    # plt.show()
 
+    # y = sig.lfilter(b2, a, x)
     y = np.zeros(np.size(x))
+    inputs = []
+    ts = []
+
     for i in range(len(x)):
-        if i > 1:
-            dt0 = t[i] - t[i-1]
-            # dt1 = t[i-1] - t[i-2]
+        inputs.append(x[i])
+        ts.append(t[i])
+        prev_dt = dt
 
-            if dt0 > 0.025:
-                b, a = b25, a25
-            else:
-                b, a = b50, a50
+        if len(inputs) > 15:
+            inputs = inputs[1:]
+            prev_dt = ts[0]
+            ts = ts[1:]
 
-            # # if dt0 > 0.025 or dt1 > 0.025:
-            # b, a = recompose(F, dt0, dt1)
-
-            # b, a = b25, a25
-        else:
-            b, a = b50, a50
-
-        xi = x[i]
-        xp = x[i-1] if i-1 >= 0 else 0.0
-        xpp = x[i-2] if i-2 >= 0 else 0.0
-
-        yp = y[i-1] if i-1 >= 0 else 0.0
-        ypp = y[i-2] if i-2 >= 0 else 0.0
-
-        yi = b[0] * xi + b[1] * xp + b[2] * xpp - a[1] * yp - a[2] * ypp
-        y[i] = yi
-
-    # y = sig.lfilter(b25, a25, x)
+        filt = np.multiply(np.concatenate(([prev_dt], np.diff(ts))), cutoff * np.sinc(cutoff * (ts - ts[len(ts)/2])))
+        y[i] = np.dot(inputs, filt)
 
     plt.figure()
-    plt.plot(t, x, '.-')
-    plt.plot(t, y, '.-')
+    plt.plot(t[mask], x[mask], '.-', color='blue')
+    plt.plot(t[mask], y[mask], '.-', color='green')
     plt.savefig('missing.png')
 
 # sampling at 50 Hz
