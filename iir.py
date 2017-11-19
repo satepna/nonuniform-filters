@@ -18,7 +18,7 @@ def compute_ABCD(alpha, beta):
     return (A, B, C, D)
 
 def euler_step(ABCD, inputs, state, dt):
-    print '-----'
+    # print '-----'
     (A, B, C, D) = ABCD
 
     prev = inputs[-2] if len(inputs) > 1 else 0
@@ -28,12 +28,8 @@ def euler_step(ABCD, inputs, state, dt):
     output = np.asscalar(np.dot(C, new_state) + np.dot(D, current))
 
     # print state
-    # print np.dot(np.identity(len(state)) + dt * A, state)
-    # print np.dot(dt * B, prev)
-
-    print state
-    print new_state
-    print output
+    # print new_state
+    # print output
 
     return new_state, output
 
@@ -49,28 +45,19 @@ if __name__ == '__main__':
     freq = 50.0
     cutoff = 10.0
 
-    # analog_filt = sig.butter(2, cutoff, analog=True)
-    # digital_filt = sig.butter(2, cutoff / (freq / 2))
-
-    # print 'analog', analog_filt
-    # print 'digital', digital_filt
-
     alpha = [cutoff**2, -2 * cutoff, 1] # (s - cutoff)^2
     beta = [1, 0, 0]
 
     ABCD = compute_ABCD(alpha, beta)
-    print ABCD[0]
-    print ABCD[1]
-    print ABCD[2]
-    print ABCD[3]
+    print 'A = ', ABCD[0]
+    print 'B = ', ABCD[1]
+    print 'C = ', ABCD[2]
+    print 'D = ', ABCD[3]
 
     dt = 1.0 / freq
     (t, x) = make_input(dt)
 
-    state = np.transpose(np.array([[0.0] * len(beta)]))
-    print '===='
-    print state
-    print '===='
+    state = np.zeros(np.size(beta)).reshape((len(beta), 1))
     outputs = []
 
     for i in range(len(t)):
