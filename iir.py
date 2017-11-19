@@ -5,15 +5,26 @@ import scipy.signal as sig
 import matplotlib.pyplot as plt
 
 def compute_ABCD(alpha, beta):
-    I = np.identity(len(beta) - 1)
-    A = np.vstack((np.hstack((np.zeros((len(beta) - 1, 1)), I)), np.multiply(-1, beta)))
+    # N is the order of the filter
+    assert len(alpha) == len(beta)
+    N = len(beta) - 1
+    assert N >= 1
 
-    B = np.zeros((len(beta), 1))
+    if N == 1:
+        A = np.array([[-beta[0]]])
+    else:
+        I = np.identity(N - 1)
+        zeros_col = np.zeros((N - 1, 1))
+
+        A = np.vstack((np.hstack((zeros_col, I)),
+                      np.multiply(-1, beta[0:N])))
+
+    B = np.zeros((N, 1))
     B[-1] = 1
 
-    C = alpha[0] - np.multiply(alpha[-1], beta)
+    C = alpha[0:N] - np.multiply(alpha[N], beta[0:N])
 
-    D = alpha[-1]
+    D = alpha[N]
 
     return (A, B, C, D)
 
@@ -37,16 +48,16 @@ def make_input(dt):
     t = np.arange(0.0, 2.0, dt)
     # mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
     # t = t[mask]
-    x = np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
+    x = np.ones(np.size(t))#np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
 
     return (t, x)
 
 if __name__ == '__main__':
-    freq = 50.0
+    freq = 100.0
     cutoff = 10.0
 
-    alpha = [cutoff**2, -2 * cutoff, 1] # (s - cutoff)^2
-    beta = [1, 0, 0]
+    alpha = [1, 0]
+    beta = [cutoff, 1] # "cutoff + s", simple zero at s=-cutoff
 
     ABCD = compute_ABCD(alpha, beta)
     print 'A = ', ABCD[0]
@@ -57,7 +68,8 @@ if __name__ == '__main__':
     dt = 1.0 / freq
     (t, x) = make_input(dt)
 
-    state = np.zeros(np.size(beta)).reshape((len(beta), 1))
+    N = len(beta) - 1
+    state = np.zeros(N).reshape((N, 1))
     outputs = []
 
     for i in range(len(t)):
