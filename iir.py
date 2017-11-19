@@ -56,8 +56,9 @@ if __name__ == '__main__':
     freq = 100.0
     cutoff = 10.0
 
-    alpha = [1, 0]
-    beta = [cutoff, 1] # "cutoff + s", simple zero at s=-cutoff
+    # simple zero at s=-cutoff
+    alpha = [1.0, 0.0]
+    beta = [1.0, 1.0/cutoff]
 
     ABCD = compute_ABCD(alpha, beta)
     print 'A = ', ABCD[0]
