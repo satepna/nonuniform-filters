@@ -45,7 +45,7 @@ def euler_step(ABCD, inputs, state, dt):
     return new_state, output
 
 def make_input(dt):
-    t = np.arange(0.0, 2.0, dt)
+    t = np.arange(0.0, 20.0, dt)
     # mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
     # t = t[mask]
     x = np.ones(np.size(t))#np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
