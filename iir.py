@@ -29,18 +29,18 @@ def compute_ABCD(alpha, beta):
     return (A, B, C, D)
 
 def euler_step(ABCD, inputs, state, dt):
-    # print '-----'
     (A, B, C, D) = ABCD
 
-    prev = inputs[-2] if len(inputs) > 1 else 0
-    current = inputs[-1]
+    prev_input = inputs[-2] if len(inputs) > 1 else 0
+    current_input = inputs[-1]
 
-    new_state = np.dot(np.identity(len(state)) + dt * A, state) + np.dot(B * dt, prev)
-    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current))
+    new_state = np.dot(np.identity(len(state)) + dt * A, state) + np.dot(B * dt, prev_input)
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
 
-    # print state
-    # print new_state
-    # print output
+    print '-----'
+    print state
+    print new_state
+    print output
 
     return new_state, output
 
