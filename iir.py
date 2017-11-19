@@ -10,14 +10,11 @@ def compute_ABCD(alpha, beta):
     N = len(beta) - 1
     assert N >= 1
 
-    if N == 1:
-        A = np.array([[-beta[0]]])
-    else:
-        I = np.identity(N - 1)
-        zeros_col = np.zeros((N - 1, 1))
+    I = np.identity(N - 1)
+    zeros_col = np.zeros((N - 1, 1))
 
-        A = np.vstack((np.hstack((zeros_col, I)),
-                      np.multiply(-1, beta[0:N])))
+    A = np.vstack((np.hstack((zeros_col, I)),
+                  np.multiply(-1, beta[0:N])))
 
     B = np.zeros((N, 1))
     B[-1] = 1
