@@ -53,7 +53,7 @@ def make_input(dt):
     return (t, x)
 
 if __name__ == '__main__':
-    freq = 100.0
+    freq = 1000.0
     cutoff = 10.0
 
     # simple zero at s=-cutoff
