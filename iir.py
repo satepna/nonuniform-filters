@@ -34,10 +34,10 @@ def euler_step(ABCD, inputs, state, dt):
     new_state = np.dot(np.identity(len(state)) + dt * A, state) + np.dot(B * dt, prev_input)
     output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
 
-    print '-----'
-    print state
-    print new_state
-    print output
+    # print '-----'
+    # print state
+    # print new_state
+    # print output
 
     return new_state, output
 
@@ -63,9 +63,11 @@ if __name__ == '__main__':
     print 'C = ', ABCD[2]
     print 'D = ', ABCD[3]
 
+    # make inputs
     dt = 1.0 / freq
     (t, x) = make_input(dt)
 
+    # filter using this algorithm
     N = len(beta) - 1
     state = np.zeros(N).reshape((N, 1))
     outputs = []
@@ -76,8 +78,31 @@ if __name__ == '__main__':
         # print state, output
         outputs.append(output)
 
+    # filter using scipy for reference
+    # zpk_digital = sig.filter_design._zpkbilinear([], [-cutoff], 1.0, freq)
+    # print zpk_digital
+
+    # assert len(zpk_digital[0]) == 1
+    # assert len(zpk_digital[1]) == 1
+
+    # b_digital = np.concatenate(([1.0], -zpk_digital[0]))
+    # a_digital = np.concatenate(([1.0], -zpk_digital[1]))
+
+    b_digital = [0.01]
+    a_digital = [1.0, -0.99]
+
+    print b_digital, a_digital
+    sig_outputs = sig.lfilter(b_digital, a_digital, x)
+
+    # butter = sig.butter(1, cutoff / freq)
+    # print butter
+    # butter_outputs = sig.lfilter(butter[0], butter[1], x)
+
+    # plot!
     plt.plot(t, x, color='black', label='input')
-    plt.plot(t, outputs, color='red', label='filtered')
+    plt.plot(t, sig_outputs, color='blue', label='lfilter')
+    # plt.plot(t, butter_outputs, color='green', label='butter')
+    plt.plot(t, outputs, color='red', label='this paper')
 
     plt.grid()
     plt.legend()
