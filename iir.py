@@ -88,8 +88,13 @@ if __name__ == '__main__':
     # b_digital = np.concatenate(([1.0], -zpk_digital[0]))
     # a_digital = np.concatenate(([1.0], -zpk_digital[1]))
 
-    b_digital = [0.01]
-    a_digital = [1.0, -0.99]
+    # This is what we're actually doing here in practice :(
+    # b_digital = [0.01]
+    # a_digital = [1.0, -0.99]
+
+    # This is what I want to be doing based on https://en.wikipedia.org/wiki/Bilinear_transform#Example:
+    b_digital = [1.0, 1.0]
+    a_digital = [1 + 2/cutoff * freq, 1 - 2/cutoff * freq]
 
     print b_digital, a_digital
     sig_outputs = sig.lfilter(b_digital, a_digital, x)
