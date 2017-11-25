@@ -62,12 +62,17 @@ def make_input(dt):
     return (t, x)
 
 if __name__ == '__main__':
+    # TODO: need to clarify between Hz and rad/sec
     freq = 50.0
     cutoff = 10.0
 
     # simple zero at s=-cutoff
     alpha = [1.0]
     beta = [1.0, 1.0/cutoff]
+
+    # 2nd order butterworth
+    # alpha = [1.0]
+    # beta = [1.0, np.sqrt(2)/cutoff, 1.0 / cutoff / cutoff]
 
     ABCD = compute_ABCD(alpha, beta)
     print 'A = ', ABCD[0]
@@ -96,6 +101,12 @@ if __name__ == '__main__':
     print b_digital, a_digital
     sig_outputs = sig.lfilter(b_digital, a_digital, x)
 
+    # analog_butter = sig.butter(1, cutoff, analog=True)
+    # print ''
+    # print analog_butter
+    # print sig.butter(1, cutoff / freq)
+    # print sig.filter_design.bilinear(analog_butter[1], analog_butter[0], freq)
+
     # butter = sig.butter(1, cutoff / freq)
     # print butter
     # butter_outputs = sig.lfilter(butter[0], butter[1], x)
@@ -118,10 +129,12 @@ if __name__ == '__main__':
 
     plt.subplot(211)
     plt.plot(w / np.pi * freq, 20 * np.log10(abs(h)), color='red')
+    plt.axvline(cutoff, color='black')
     plt.grid()
 
     plt.subplot(212)
     plt.plot(w / np.pi * freq, angles, color='red')
+    plt.axvline(cutoff, color='black')
     plt.grid()
 
     plt.savefig('iir-freq.png')
