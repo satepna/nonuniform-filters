@@ -5,6 +5,11 @@ import scipy.signal as sig
 import matplotlib.pyplot as plt
 
 def compute_ABCD(alpha, beta):
+    # normalize to beta[N] = 1. the paper doesn't mention this but seems to assume it...
+    assert beta[-1] != 0
+    alpha = np.divide(alpha, beta[-1])
+    beta = np.divide(beta, beta[-1])
+
     # N is the order of the filter
     assert len(alpha) == len(beta)
     N = len(beta) - 1
@@ -45,7 +50,7 @@ def make_input(dt):
     t = np.arange(0.0, 20.0, dt)
     # mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
     # t = t[mask]
-    x = np.ones(np.size(t))#np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
+    x = np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
 
     return (t, x)
 
@@ -105,7 +110,7 @@ if __name__ == '__main__':
 
     # plot!
     plt.plot(t, x, color='black', label='input')
-    plt.plot(t, sig_outputs, color='blue', label='lfilter')
+    plt.plot(t, sig_outputs, 'o', color='blue', label='lfilter')
     # plt.plot(t, butter_outputs, color='green', label='butter')
     plt.plot(t, outputs, color='red', label='this paper')
 
