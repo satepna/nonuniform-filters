@@ -53,6 +53,24 @@ def euler_step(ABCD, inputs, state, dt):
 
     return new_state, output
 
+def bilinear_step(ABCD, inputs, state, dt):
+    (A, B, C, D) = ABCD
+
+    prev_input = inputs[-2] if len(inputs) > 1 else 0
+    current_input = inputs[-1]
+
+    Aminus = np.identity(len(state)) - (dt/2.0) * A
+    Aplus = np.identity(len(state)) + (dt/2.0) * A
+    Aminus_inv = np.linalg.inv(Aminus)
+
+    Psi = np.dot(Aminus_inv, Aplus)
+    Lambda = np.dot(Aminus_inv, B * dt)
+
+    new_state = np.dot(Psi, state) + np.dot(Lambda, 0.5 * (prev_input + current_input))
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+
+    return new_state, output
+
 def make_input(dt):
     t = np.arange(0.0, 2.0, dt)
     mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
@@ -91,7 +109,7 @@ if __name__ == '__main__':
 
     for i in range(len(t)):
         inputs = x[0:i+1]
-        state, output = euler_step(ABCD, inputs, state, dt if i == 0 else t[i] - t[i-1])
+        state, output = bilinear_step(ABCD, inputs, state, dt if i == 0 else t[i] - t[i-1])
         # print state, output
         outputs.append(output)
 
