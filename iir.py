@@ -47,7 +47,7 @@ def euler_step(ABCD, inputs, state, dt):
     return new_state, output
 
 def make_input(dt):
-    t = np.arange(0.0, 20.0, dt)
+    t = np.arange(0.0, 2.0, dt)
     # mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
     # t = t[mask]
     x = np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
@@ -55,7 +55,7 @@ def make_input(dt):
     return (t, x)
 
 if __name__ == '__main__':
-    freq = 100.0
+    freq = 50.0
     cutoff = 10.0
 
     # simple zero at s=-cutoff
@@ -109,10 +109,10 @@ if __name__ == '__main__':
     # butter_outputs = sig.lfilter(butter[0], butter[1], x)
 
     # plot!
-    plt.plot(t, x, color='black', label='input')
-    plt.plot(t, sig_outputs, 'o', color='blue', label='lfilter')
+    plt.plot(t, x, '.-', color='black', label='input')
+    plt.plot(t, sig_outputs, '.-', color='blue', label='lfilter')
     # plt.plot(t, butter_outputs, color='green', label='butter')
-    plt.plot(t, outputs, color='red', label='this paper')
+    plt.plot(t, outputs, '.-', color='red', label='this paper')
 
     plt.grid()
     plt.legend()
@@ -121,26 +121,15 @@ if __name__ == '__main__':
 
     # plt.figure()
 
-    # w, h = sig.freqs(*analog_filt)
-    # angles = np.unwrap(np.angle(h))
+    w, h = sig.freqz(b_digital, a_digital)
+    angles = np.unwrap(np.angle(h))
 
-    # plt.subplot(211)
-    # plt.plot(w / (freq / 2), 20 * np.log10(abs(h)), color='blue', label='analog')
-    # plt.grid()
+    plt.subplot(211)
+    plt.plot(w / np.pi * freq, 20 * np.log10(abs(h)), color='red')
+    plt.grid()
 
-    # plt.subplot(212)
-    # plt.plot(w / (freq / 2), angles, color='blue', label='analog')
-    # plt.grid()
+    plt.subplot(212)
+    plt.plot(w / np.pi * freq, angles, color='red')
+    plt.grid()
 
-    # w, h = sig.freqz(*digital_filt)
-    # angles = np.unwrap(np.angle(h))
-
-    # plt.subplot(211)
-    # plt.plot(w, 20 * np.log10(abs(h)), color='red', label='digital')
-
-    # plt.subplot(212)
-    # plt.plot(w, angles, color='red', label='digital')
-
-    # plt.legend()
-
-    # plt.savefig('iir-freq.png')
+    plt.savefig('iir-freq.png')
