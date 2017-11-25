@@ -5,6 +5,13 @@ import scipy.signal as sig
 import matplotlib.pyplot as plt
 
 def compute_ABCD(alpha, beta):
+    # pad alpha if it's too short (fewer zeros than poles)
+    if len(alpha) < len(beta):
+        alpha = np.pad(alpha, ((0, len(beta) - len(alpha))), 'constant')
+    elif len(alpha) > len(beta):
+        # I don't know how to handle this case since we need to normalize by beta[N]
+        assert False
+
     # normalize to beta[N] = 1. the paper doesn't mention this but seems to assume it...
     assert beta[-1] != 0
     alpha = np.divide(alpha, beta[-1])
@@ -59,7 +66,7 @@ if __name__ == '__main__':
     cutoff = 10.0
 
     # simple zero at s=-cutoff
-    alpha = [1.0, 0.0]
+    alpha = [1.0]
     beta = [1.0, 1.0/cutoff]
 
     ABCD = compute_ABCD(alpha, beta)
@@ -84,23 +91,8 @@ if __name__ == '__main__':
         outputs.append(output)
 
     # filter using scipy for reference
-    # zpk_digital = sig.filter_design._zpkbilinear([], [-cutoff], 1.0, freq)
-    # print zpk_digital
-
-    # assert len(zpk_digital[0]) == 1
-    # assert len(zpk_digital[1]) == 1
-
-    # b_digital = np.concatenate(([1.0], -zpk_digital[0]))
-    # a_digital = np.concatenate(([1.0], -zpk_digital[1]))
-
-    # This is what we're actually doing here in practice :(
-    # b_digital = [0.01]
-    # a_digital = [1.0, -0.99]
-
-    # This is what I want to be doing based on https://en.wikipedia.org/wiki/Bilinear_transform#Example:
-    b_digital = [1.0, 1.0]
-    a_digital = [1 + 2/cutoff * freq, 1 - 2/cutoff * freq]
-
+    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in decreasing order
+    b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], freq)
     print b_digital, a_digital
     sig_outputs = sig.lfilter(b_digital, a_digital, x)
 
@@ -119,7 +111,7 @@ if __name__ == '__main__':
 
     plt.savefig('iir.png')
 
-    # plt.figure()
+    plt.figure()
 
     w, h = sig.freqz(b_digital, a_digital)
     angles = np.unwrap(np.angle(h))
