@@ -48,8 +48,8 @@ def euler_step(ABCD, inputs, state, dt):
 
 def make_input(dt):
     t = np.arange(0.0, 2.0, dt)
-    # mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
-    # t = t[mask]
+    mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
+    t = t[mask]
     x = np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
 
     return (t, x)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     for i in range(len(t)):
         inputs = x[0:i+1]
-        state, output = euler_step(ABCD, inputs, state, dt)
+        state, output = euler_step(ABCD, inputs, state, dt if i == 0 else t[i] - t[i-1])
         # print state, output
         outputs.append(output)
 
