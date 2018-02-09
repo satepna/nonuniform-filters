@@ -1,4 +1,5 @@
 # from https://pdfs.semanticscholar.org/5078/0671847de20969fa653b689d0ce5ea05d0af.pdf
+# the analytic stuff is from reference [5] in that paper, http://documents.irevues.inist.fr/bitstream/handle/2042/2173/nondispo.pdf?sequence=1
 
 import numpy as np
 import scipy.signal as sig
