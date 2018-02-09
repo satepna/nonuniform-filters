@@ -27,7 +27,7 @@ def compute_ABCD(alpha, beta):
     zeros_col = np.zeros((N - 1, 1))
 
     A = np.vstack((np.hstack((zeros_col, I)),
-                  np.multiply(-1, beta[0:N])))
+                  -beta[0:N]))
 
     B = np.zeros((N, 1))
     B[-1] = 1
@@ -57,7 +57,7 @@ def euler_step(ABCD, inputs, state, dt):
 def bilinear_step(ABCD, inputs, state, dt):
     (A, B, C, D) = ABCD
 
-    prev_input = inputs[-2] if len(inputs) > 1 else 0
+    prev_input = inputs[-2] if len(inputs) > 1 else 0.0
     current_input = inputs[-1]
 
     Aminus = np.identity(len(state)) - (dt/2.0) * A
@@ -72,16 +72,42 @@ def bilinear_step(ABCD, inputs, state, dt):
 
     return new_state, output
 
-def analytic_step(ABCD, inputs, state, dt):
+def analytic0_step(ABCD, inputs, state, dt):
     (A, B, C, D) = ABCD
 
+    prev_input = inputs[-2] if len(inputs) > 1 else 0.0
     current_input = inputs[-1]
 
     expA = expm(A * dt)
     invA = np.linalg.inv(A)
     I = np.identity(len(A))
 
-    new_state = np.dot(expA, state) - np.dot(np.dot(invA, I - expA), B) * inputs[-1]
+    # zero order hold
+    new_state = np.dot(expA, state) - \
+                np.dot(np.dot(invA, I - expA), B) * prev_input
+
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+
+    return new_state, output
+
+def analytic1_step(ABCD, inputs, state, dt):
+    (A, B, C, D) = ABCD
+
+    prev_input = inputs[-2] if len(inputs) > 1 else 0.0
+    current_input = inputs[-1]
+
+    expA = expm(A * dt)
+    invA = np.linalg.inv(A)
+    invA2 = invA * invA
+
+    I = np.identity(len(A))
+    du_dt = (current_input - prev_input) / dt
+
+    # first order hold
+    new_state = np.dot(expA, state) - \
+                np.dot(np.dot(invA, I - expA), B) * prev_input + \
+                np.dot(np.dot(invA2, I - np.dot(expA, I - A * dt)), B) * du_dt
+
     output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
 
     return new_state, output
@@ -138,16 +164,18 @@ if __name__ == '__main__':
     sig_outputs = sig.lfilter(b_digital, a_digital, x)
 
     # filter using this algorithm
-    euler_outputs    = make_output(alpha, beta, dt, euler_step, t, x)
-    bilinear_outputs = make_output(alpha, beta, dt, bilinear_step, t, x)
-    analytic_outputs = make_output(alpha, beta, dt, analytic_step, t, x)
+    euler_outputs     = make_output(alpha, beta, dt, euler_step, t, x)
+    bilinear_outputs  = make_output(alpha, beta, dt, bilinear_step, t, x)
+    analytic0_outputs = make_output(alpha, beta, dt, analytic0_step, t, x)
+    analytic1_outputs = make_output(alpha, beta, dt, analytic1_step, t, x)
 
     # plot!
     plt.plot(t, x, '.-', color='black', label='input')
     plt.plot(t, sig_outputs, '.-', color='gray', label='lfilter')
     plt.plot(t, euler_outputs, '.-', color='green', label='euler')
     plt.plot(t, bilinear_outputs, '.-', color='blue', label='bilinear')
-    plt.plot(t, analytic_outputs, '.-', color='red', label='analytic0')
+    plt.plot(t, analytic0_outputs, '.-', color='red', label='analytic0')
+    plt.plot(t, analytic1_outputs, '.-', color='pink', label='analytic1')
 
     plt.grid()
     plt.legend()
