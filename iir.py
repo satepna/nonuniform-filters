@@ -3,6 +3,7 @@
 import numpy as np
 import scipy.signal as sig
 import matplotlib.pyplot as plt
+from scipy.linalg import expm
 
 def compute_ABCD(alpha, beta):
     # pad alpha if it's too short (fewer zeros than poles)
@@ -71,6 +72,20 @@ def bilinear_step(ABCD, inputs, state, dt):
 
     return new_state, output
 
+def analytic_step(ABCD, inputs, state, dt):
+    (A, B, C, D) = ABCD
+
+    current_input = inputs[-1]
+
+    expA = expm(A * dt)
+    invA = np.linalg.inv(A)
+    I = np.identity(len(A))
+
+    new_state = np.dot(expA, state) - np.dot(np.dot(invA, I - expA), B) * inputs[-1]
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+
+    return new_state, output
+
 def make_input(dt):
     t = np.arange(0.0, 2.0, dt)
     mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
@@ -78,6 +93,20 @@ def make_input(dt):
     x = np.sin(2 * np.pi * t) + 0.05 * np.sin(123 * t)
 
     return (t, x)
+
+def make_output(alpha, beta, nominal_dt, method, t, x):
+    N = len(beta) - 1
+    ABCD = compute_ABCD(alpha, beta)
+
+    state = np.zeros(N).reshape((N, 1))
+    y = np.zeros_like(x)
+
+    for i in range(len(t)):
+        new_input = x[max(0, i-1):i+1]
+        state, output = method(ABCD, new_input, state, nominal_dt if i == 0 else t[i] - t[i-1])
+        y[i] = output
+
+    return y
 
 if __name__ == '__main__':
     # TODO: need to clarify between Hz and rad/sec
@@ -92,48 +121,33 @@ if __name__ == '__main__':
     # alpha = [1.0]
     # beta = [1.0, np.sqrt(2)/cutoff, 1.0 / cutoff / cutoff]
 
-    ABCD = compute_ABCD(alpha, beta)
-    print 'A = ', ABCD[0]
-    print 'B = ', ABCD[1]
-    print 'C = ', ABCD[2]
-    print 'D = ', ABCD[3]
+    # ABCD = compute_ABCD(alpha, beta)
+    # print 'A = ', ABCD[0]
+    # print 'B = ', ABCD[1]
+    # print 'C = ', ABCD[2]
+    # print 'D = ', ABCD[3]
 
     # make inputs
     dt = 1.0 / freq
     (t, x) = make_input(dt)
 
-    # filter using this algorithm
-    N = len(beta) - 1
-    state = np.zeros(N).reshape((N, 1))
-    outputs = []
-
-    for i in range(len(t)):
-        inputs = x[0:i+1]
-        state, output = bilinear_step(ABCD, inputs, state, dt if i == 0 else t[i] - t[i-1])
-        # print state, output
-        outputs.append(output)
-
     # filter using scipy for reference
-    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in decreasing order
+    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
+    # decreasing order.
     b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], freq)
-    print b_digital, a_digital
     sig_outputs = sig.lfilter(b_digital, a_digital, x)
 
-    # analog_butter = sig.butter(1, cutoff, analog=True)
-    # print ''
-    # print analog_butter
-    # print sig.butter(1, cutoff / freq)
-    # print sig.filter_design.bilinear(analog_butter[1], analog_butter[0], freq)
-
-    # butter = sig.butter(1, cutoff / freq)
-    # print butter
-    # butter_outputs = sig.lfilter(butter[0], butter[1], x)
+    # filter using this algorithm
+    euler_outputs    = make_output(alpha, beta, dt, euler_step, t, x)
+    bilinear_outputs = make_output(alpha, beta, dt, bilinear_step, t, x)
+    analytic_outputs = make_output(alpha, beta, dt, analytic_step, t, x)
 
     # plot!
     plt.plot(t, x, '.-', color='black', label='input')
-    plt.plot(t, sig_outputs, '.-', color='blue', label='lfilter')
-    # plt.plot(t, butter_outputs, color='green', label='butter')
-    plt.plot(t, outputs, '.-', color='red', label='this paper')
+    plt.plot(t, sig_outputs, '.-', color='gray', label='lfilter')
+    plt.plot(t, euler_outputs, '.-', color='green', label='euler')
+    plt.plot(t, bilinear_outputs, '.-', color='blue', label='bilinear')
+    plt.plot(t, analytic_outputs, '.-', color='red', label='analytic0')
 
     plt.grid()
     plt.legend()
@@ -142,6 +156,7 @@ if __name__ == '__main__':
 
     plt.figure()
 
+    # Plot frequency response of this filter that we made, for reference.
     w, h = sig.freqz(b_digital, a_digital)
     angles = np.unwrap(np.angle(h))
 
