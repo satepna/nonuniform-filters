@@ -166,7 +166,7 @@ def make_timedomain_plots():
     # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
     # decreasing order.
     b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], freq)
-    sig_outputs = sig.lfilter(b_digital, a_digital, x)
+    lfilter_outputs = sig.lfilter(b_digital, a_digital, x)
 
     # filter using this algorithm
     euler_outputs     = make_output(alpha, beta, dt, euler_step, t, x)
@@ -212,7 +212,6 @@ def make_timedomain_plots():
     plt.ylim(0.0, 1.0)
     plt.grid()
 
-    plt.tight_layout()
     plt.savefig('iir-freq.png')
 
     ###
@@ -222,7 +221,7 @@ def make_timedomain_plots():
     plt.axhline(y=expected_gain, color='gray')
     plt.axhline(y=-expected_gain, color='gray')
     plt.plot(t, x, '.-', color='black', label='input')
-    plt.plot(t, sig_outputs, '.-', color='gray', label='lfilter')
+    plt.plot(t, lfilter_outputs, '.-', color='gray', label='lfilter')
     plt.plot(t, euler_outputs, '.-', color='green', label='euler')
     plt.plot(t, bilinear_outputs, '.-', color='blue', label='bilinear')
     plt.plot(t, analytic0_outputs, '.-', color='red', label='analytic0')
@@ -232,7 +231,6 @@ def make_timedomain_plots():
     plt.grid()
     plt.legend()
 
-    plt.tight_layout()
     plt.savefig('iir.png')
 
 def make_freqdomain_plots():
@@ -277,7 +275,7 @@ def make_freqdomain_plots():
     # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
     # decreasing order.
     b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], sample_freq)
-    sig_outputs = sig.lfilter(b_digital, a_digital, x)
+    lfilter_outputs = sig.lfilter(b_digital, a_digital, x)
 
     w, h = sig.freqz(b_digital, a_digital)
     expected_freq = w / np.pi
@@ -285,7 +283,7 @@ def make_freqdomain_plots():
     expected_amplitude = np.abs(h)
 
     # fft the filtered chirp
-    filtered_y = fft.fft(sig_outputs)
+    filtered_y = fft.fft(lfilter_outputs)
     filtered_y = filtered_y[0:len(filtered_y)/2]
 
     plt.figure()
