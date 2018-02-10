@@ -180,13 +180,15 @@ def make_timedomain_plots():
     w, h = sig.freqz(b_digital, a_digital)
     response_freq = w / (2 * np.pi) * freq
     response_phase = np.unwrap(np.angle(h))
+    response_group_delay = -np.diff(response_phase) / np.diff(response_freq)
     response_amplitude = np.abs(h)
 
     expected_gain = np.interp(signal_freq, response_freq, response_amplitude)
     expected_phase = np.interp(signal_freq, response_freq, response_phase)
+    expected_group_delay = np.interp(signal_freq, response_freq[1:], response_group_delay)
 
     plt.figure()
-    plt.subplot(211)
+    plt.subplot(311)
     plt.plot(response_freq, 20 * np.log10(response_amplitude), color='red')
     plt.axvline(cutoff_freq, color='black')
     plt.scatter([signal_freq], [20 * np.log10(expected_gain)], facecolors='none', edgecolors='red')
@@ -194,12 +196,20 @@ def make_timedomain_plots():
     plt.ylim(-60, 0)
     plt.grid()
 
-    plt.subplot(212)
+    plt.subplot(312)
     plt.plot(response_freq, response_phase * 180 / np.pi, color='red')
     plt.axvline(cutoff_freq, color='black')
     plt.scatter([signal_freq], [expected_phase * 180 / np.pi], facecolors='none', edgecolors='red')
     plt.xlim(0, freq / 2)
     plt.ylim(-90, 0)
+    plt.grid()
+
+    plt.subplot(313)
+    plt.plot(response_freq[1:], response_group_delay, color='red')
+    plt.axvline(cutoff_freq, color='black')
+    plt.scatter([signal_freq], [expected_group_delay], facecolors='none', edgecolors='red')
+    plt.xlim(0, freq / 2)
+    plt.ylim(0.0, 1.0)
     plt.grid()
 
     plt.tight_layout()
@@ -234,9 +244,6 @@ def make_freqdomain_plots():
     t_max = 4000.0
     t = np.linspace(0.0, t_max, t_max * sample_freq, endpoint=False)
     x = sig.chirp(t, 0.0, t_max, nyquist_freq)
-
-    print t
-    print x
 
     # plot fft of the chirp for reference
     y = fft.fft(x)
@@ -293,17 +300,22 @@ def make_freqdomain_plots():
 
     # plot the difference of the original chirp spectrum and the filtered chirp spectrum
     plt.figure()
-    plt.subplot(211)
+    plt.subplot(311)
     plt.plot(f, 20 * np.log10(np.abs(filtered_y)) - 20 * np.log10(np.abs(y)))
     plt.plot(expected_freq, 20 * np.log10(expected_amplitude), color='red')
     plt.grid()
 
-    plt.subplot(212)
+    plt.subplot(312)
     plt.plot(f, np.unwrap(np.angle(filtered_y) - np.angle(y)))
     plt.plot(expected_freq, expected_phase, color='red')
+    plt.grid()
+
+    plt.subplot(313)
+    plt.plot(f[1:], -np.diff(np.unwrap(np.angle(filtered_y) - np.angle(y))) / np.diff(f))
+    plt.plot(expected_freq[1:], -np.diff(expected_phase) / np.diff(expected_freq), color='red')
     plt.grid()
     plt.savefig('chirp-filt-diff-fft.png')
 
 if __name__ == '__main__':
-    # make_timedomain_plots()
+    make_timedomain_plots()
     make_freqdomain_plots()
