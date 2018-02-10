@@ -4,6 +4,7 @@
 import numpy as np
 import scipy.signal as sig
 import scipy.linalg as linalg
+import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 
 def compute_ABCD(alpha, beta):
@@ -137,7 +138,7 @@ def make_output(alpha, beta, nominal_dt, method, t, x):
 
     return y
 
-if __name__ == '__main__':
+def make_timedomain_plots():
     # TODO: need to clarify between Hz and rad/sec
     freq = 50.0
     cutoff_freq = 10.0
@@ -223,3 +224,86 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.savefig('iir.png')
+
+def make_freqdomain_plots():
+    nyquist_freq = 1.0
+    sample_freq = 2.0 * nyquist_freq
+    cutoff_freq = 0.1 * nyquist_freq
+
+    # make inputs
+    t_max = 4000.0
+    t = np.linspace(0.0, t_max, t_max * sample_freq, endpoint=False)
+    x = sig.chirp(t, 0.0, t_max, nyquist_freq)
+
+    print t
+    print x
+
+    # plot fft of the chirp for reference
+    y = fft.fft(x)
+    y = y[0:len(y)/2] # only look at positive frequency components
+
+    plt.figure()
+    plt.plot(t, x)
+    plt.grid()
+    plt.savefig('chirp.png')
+
+    plt.figure()
+
+    f = fft.fftfreq(len(x), d=1.0 / sample_freq)
+    f = f[0:len(f) / 2]
+
+    plt.subplot(211)
+    plt.plot(f, np.abs(y))
+    plt.grid()
+
+    plt.subplot(212)
+    plt.plot(f, np.unwrap(np.angle(y)))
+    plt.grid()
+
+    plt.savefig('chirp-fft.png')
+
+    # simple zero at s=-cutoff_freq
+    alpha = [1.0]
+    beta = [1.0, 1.0/cutoff_freq]
+
+    # filter chirp using scipy.
+    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
+    # decreasing order.
+    b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], sample_freq)
+    sig_outputs = sig.lfilter(b_digital, a_digital, x)
+
+    w, h = sig.freqz(b_digital, a_digital)
+    expected_freq = w / np.pi
+    expected_phase = np.unwrap(np.angle(h))
+    expected_amplitude = np.abs(h)
+
+    # fft the filtered chirp
+    filtered_y = fft.fft(sig_outputs)
+    filtered_y = filtered_y[0:len(filtered_y)/2]
+
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(f, np.abs(filtered_y))
+    plt.grid()
+
+    plt.subplot(212)
+    plt.plot(f, np.unwrap(np.angle(filtered_y)))
+    plt.grid()
+    plt.savefig('chirp-filt-fft.png')
+
+    # plot the difference of the original chirp spectrum and the filtered chirp spectrum
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(f, 20 * np.log10(np.abs(filtered_y)) - 20 * np.log10(np.abs(y)))
+    plt.plot(expected_freq, 20 * np.log10(expected_amplitude), color='red')
+    plt.grid()
+
+    plt.subplot(212)
+    plt.plot(f, np.unwrap(np.angle(filtered_y) - np.angle(y)))
+    plt.plot(expected_freq, expected_phase, color='red')
+    plt.grid()
+    plt.savefig('chirp-filt-diff-fft.png')
+
+if __name__ == '__main__':
+    # make_timedomain_plots()
+    make_freqdomain_plots()
