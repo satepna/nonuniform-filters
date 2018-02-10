@@ -3,8 +3,8 @@
 
 import numpy as np
 import scipy.signal as sig
+import scipy.linalg as linalg
 import matplotlib.pyplot as plt
-from scipy.linalg import expm
 
 def compute_ABCD(alpha, beta):
     # pad alpha if it's too short (fewer zeros than poles)
@@ -65,7 +65,7 @@ def bilinear_step(ABCD, inputs, state, dt):
 
     Aminus = I - (dt/2.0) * A
     Aplus = I + (dt/2.0) * A
-    Aminus_inv = np.linalg.inv(Aminus)
+    Aminus_inv = linalg.inv(Aminus)
 
     Psi = np.dot(Aminus_inv, Aplus)
     Lambda = np.dot(Aminus_inv, B * dt)
@@ -82,8 +82,8 @@ def analytic0_step(ABCD, inputs, state, dt):
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
 
-    expAdt = expm(dt * A)
-    invA = np.linalg.inv(A)
+    expAdt = linalg.expm(dt * A)
+    invA = linalg.inv(A)
 
     # zero order hold
     new_state = np.dot(expAdt, state) - \
@@ -100,8 +100,8 @@ def analytic1_step(ABCD, inputs, state, dt):
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
 
-    expAdt = expm(A * dt)
-    invA = np.linalg.inv(A)
+    expAdt = linalg.expm(A * dt)
+    invA = linalg.inv(A)
     invA2 = invA * invA
 
     du_dt = (current_input - prev_input) / dt
