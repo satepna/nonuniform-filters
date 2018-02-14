@@ -42,18 +42,16 @@ def make_timedomain_plots():
     response_freq = w / (2 * np.pi) * sample_freq
     response_amplitude = np.abs(h)
     response_phase = np.unwrap(np.angle(h))
-    response_group_delay = -np.diff(response_phase) / np.diff(response_freq) * dt
 
-    # Compute the expected gain, phase, and group delay given the signal that we're providing as input, so we can mark
-    # them on the graph.
+    # Compute the expected gain and phase given the signal that we're providing as input, so we can mark them on the
+    # graph.
     expected_gain = np.interp(signal_freq, response_freq, response_amplitude)
     expected_phase = np.interp(signal_freq, response_freq, response_phase)
-    expected_group_delay = np.interp(signal_freq, response_freq[1:], response_group_delay)
 
     # Plot the frequency response.
     plt.figure()
 
-    plt.subplot(311)
+    plt.subplot(211)
     plt.plot(response_freq, 10 * np.log10(response_amplitude), color='red')
     plt.axvline(cutoff_freq, color='black')
     plt.scatter([signal_freq], [10 * np.log10(expected_gain)], facecolors='none', edgecolors='red')
@@ -62,22 +60,13 @@ def make_timedomain_plots():
     plt.ylabel('gain (dB)')
     plt.grid()
 
-    plt.subplot(312)
+    plt.subplot(212)
     plt.plot(response_freq, response_phase, color='red')
     plt.axvline(cutoff_freq, color='black')
     plt.scatter([signal_freq], [expected_phase], facecolors='none', edgecolors='red')
     plt.xlim(0, sample_freq / 2)
     plt.ylim(-np.pi, 0)
     plt.ylabel('phase (rad)')
-    plt.grid()
-
-    plt.subplot(313)
-    plt.plot(response_freq[1:], response_group_delay, color='red')
-    plt.axvline(cutoff_freq, color='black')
-    plt.scatter([signal_freq], [expected_group_delay], facecolors='none', edgecolors='red')
-    plt.xlim(0, sample_freq / 2)
-    plt.xlabel('freq (Hz)')
-    plt.ylabel('group delay (s)')
     plt.grid()
 
     plt.savefig('plots/example-filter-design.png')
