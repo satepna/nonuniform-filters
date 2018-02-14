@@ -131,7 +131,7 @@ def analytic1_step(ABCD, inputs, state, dt):
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
 
-    expAdt = linalg.expm(A * dt)
+    expAdt = linalg.expm(dt * A)
     invA = linalg.inv(A)
     invA2 = invA * invA
 

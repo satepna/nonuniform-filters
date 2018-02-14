@@ -3,110 +3,100 @@ import scipy.signal as sig
 import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 
-from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output
+from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
+
 
 def make_input(signal_freq, dt):
+    # Make a time vector that starts at dt, but drops to dt/5 after the halfway mark.
     t = np.arange(0.0, 2.0, dt)
-    mask = [i for i in range(len(t)) if i < 50 or i % 2 == 0]
+    mask = [i for i in range(len(t)) if i < 50 or i % 5 == 0]
     t = t[mask]
+
+    # Make a noisy sine wave basedo n that time vector.
     x = np.sin(signal_freq * 2 * np.pi * t) + 0.05 * np.sin(123 * t)
 
     return (t, x)
 
+
 def make_timedomain_plots():
-    # TODO: need to clarify between Hz and rad/sec
-    freq = 50.0
-    cutoff_freq = 10.0
+    # Design our lowpass filter.
+    sample_freq = 50.0
+    cutoff_freq = 5.0
+    alpha, beta = analog_zpk_to_alpha_beta(sig.butter(2, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True))
 
-    # simple zero at s=-cutoff_freq
-    alpha = [1.0]
-    beta = [1.0, 1.0/cutoff_freq]
-
-    # 2nd order butterworth
-    # alpha = [1.0]
-    # beta = [1.0, np.sqrt(2)/cutoff_freq, 1.0 / cutoff_freq / cutoff_freq]
-
-    # ABCD = compute_ABCD(alpha, beta)
-    # print 'A = ', ABCD[0]
-    # print 'B = ', ABCD[1]
-    # print 'C = ', ABCD[2]
-    # print 'D = ', ABCD[3]
-
-    # make inputs
+    # Make our example input.
     signal_freq = 1.0
-    dt = 1.0 / freq
+    dt = 1.0 / sample_freq
     (t, x) = make_input(signal_freq, dt)
 
-    # filter using scipy for reference
-    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
-    # decreasing order.
-    b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], freq)
-    lfilter_outputs = sig.lfilter(b_digital, a_digital, x)
+    # Filter using scipy for reference.
+    b_digital, a_digital = sig.butter(2, cutoff_freq / sample_freq)
+    lfilter_output = sig.lfilter(b_digital, a_digital, x)
 
-    # filter using this algorithm
-    euler_outputs     = make_output(alpha, beta, dt, euler_step, t, x)
-    bilinear_outputs  = make_output(alpha, beta, dt, bilinear_step, t, x)
-    analytic0_outputs = make_output(alpha, beta, dt, analytic0_step, t, x)
-    analytic1_outputs = make_output(alpha, beta, dt, analytic1_step, t, x)
+    # Filter using the algorithm from this paper.
+    statespace_output = make_output(alpha, beta, dt, bilinear_step, t, x)
 
-    ####
-
-    # Plot frequency response of this filter that we made.
+    # Compute the frequency response of the filter we designed.
     w, h = sig.freqz(b_digital, a_digital)
-    response_freq = w / (2 * np.pi) * freq
-    response_phase = np.unwrap(np.angle(h))
-    response_group_delay = -np.diff(response_phase) / np.diff(response_freq)
+    response_freq = w / (2 * np.pi) * sample_freq
     response_amplitude = np.abs(h)
+    response_phase = np.unwrap(np.angle(h))
+    response_group_delay = -np.diff(response_phase) / np.diff(response_freq) * dt
 
+    # Compute the expected gain, phase, and group delay given the signal that we're providing as input, so we can mark
+    # them on the graph.
     expected_gain = np.interp(signal_freq, response_freq, response_amplitude)
     expected_phase = np.interp(signal_freq, response_freq, response_phase)
     expected_group_delay = np.interp(signal_freq, response_freq[1:], response_group_delay)
 
+    # Plot the frequency response.
     plt.figure()
+
     plt.subplot(311)
-    plt.plot(response_freq, 20 * np.log10(response_amplitude), color='red')
+    plt.plot(response_freq, 10 * np.log10(response_amplitude), color='red')
     plt.axvline(cutoff_freq, color='black')
-    plt.scatter([signal_freq], [20 * np.log10(expected_gain)], facecolors='none', edgecolors='red')
-    plt.xlim(0, freq / 2)
-    plt.ylim(-60, 0)
+    plt.scatter([signal_freq], [10 * np.log10(expected_gain)], facecolors='none', edgecolors='red')
+    plt.xlim(0, sample_freq / 2)
+    plt.ylim(-40, 0)
+    plt.ylabel('gain (dB)')
     plt.grid()
 
     plt.subplot(312)
-    plt.plot(response_freq, response_phase * 180 / np.pi, color='red')
+    plt.plot(response_freq, response_phase, color='red')
     plt.axvline(cutoff_freq, color='black')
-    plt.scatter([signal_freq], [expected_phase * 180 / np.pi], facecolors='none', edgecolors='red')
-    plt.xlim(0, freq / 2)
-    plt.ylim(-90, 0)
+    plt.scatter([signal_freq], [expected_phase], facecolors='none', edgecolors='red')
+    plt.xlim(0, sample_freq / 2)
+    plt.ylim(-np.pi, 0)
+    plt.ylabel('phase (rad)')
     plt.grid()
 
     plt.subplot(313)
     plt.plot(response_freq[1:], response_group_delay, color='red')
     plt.axvline(cutoff_freq, color='black')
     plt.scatter([signal_freq], [expected_group_delay], facecolors='none', edgecolors='red')
-    plt.xlim(0, freq / 2)
-    plt.ylim(0.0, 1.0)
+    plt.xlim(0, sample_freq / 2)
+    plt.xlabel('freq (Hz)')
+    plt.ylabel('group delay (s)')
     plt.grid()
 
-    plt.savefig('iir-freq.png')
+    plt.savefig('example-filter-design.png')
 
-    ###
-
-    # plot example signal
-    plt.figure(figsize=(10, 8))
+    # Plot the time-domain response of this signal, with guidelines for expected gain.
+    plt.figure()
     plt.axhline(y=expected_gain, color='gray')
     plt.axhline(y=-expected_gain, color='gray')
     plt.plot(t, x, '.-', color='black', label='input')
-    plt.plot(t, lfilter_outputs, '.-', color='gray', label='lfilter')
-    plt.plot(t, euler_outputs, '.-', color='green', label='euler')
-    plt.plot(t, bilinear_outputs, '.-', color='blue', label='bilinear')
-    plt.plot(t, analytic0_outputs, '.-', color='red', label='analytic0')
-    plt.plot(t, analytic1_outputs, '.-', color='pink', label='analytic1')
+    plt.plot(t, lfilter_output, '.-', color='gray', label='lfilter')
+    plt.plot(t, statespace_output, '.-', color='red', label='statespace')
 
     plt.ylim(-1.5, 1.5)
+    plt.xlabel('time (s)')
+    plt.ylabel('signal value')
     plt.grid()
     plt.legend()
 
-    plt.savefig('iir.png')
+    plt.savefig('example-timedomain-output.png')
+
 
 if __name__ == '__main__':
     make_timedomain_plots()

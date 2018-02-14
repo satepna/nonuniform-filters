@@ -210,7 +210,7 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
 
     plt.grid()
     plt.xlabel('freq')
-    plt.ylabel('phase delay (rad)')
+    plt.ylabel('phase (rad)')
     plt.legend()
 
     plt.savefig('%sresponse.png' % name_prefix)
