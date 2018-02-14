@@ -57,13 +57,13 @@ def analyze_filter(sample_freq, cutoff_freq, order, btype):
     plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
 
     plot_outputs('%s-' % btype, input_t, fft_freq, [
-        ('lfilter', lfilter_output, lfilter_fft),
-        ('statespace', statespace_output, statespace_fft),
+        ('lfilter', 'black', lfilter_output, lfilter_fft),
+        ('statespace', 'red', statespace_output, statespace_fft),
     ])
 
     plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
-        ('lfilter', lfilter_fft),
-        ('statespace', statespace_fft),
+        ('lfilter', 'black', lfilter_fft),
+        ('statespace', 'red', statespace_fft),
     ])
 
 
@@ -85,18 +85,24 @@ def compare_methods(sample_freq, cutoff_freq, order, btype):
 
     # FFT the result of filtering the chirp by all types of filters.
     ffts = {
-        method_name: fft.fft(output)[0:len(fft_freq)] for method_name, output in outputs.iteritems()
+        method: fft.fft(output)[0:len(fft_freq)] for method, output in outputs.iteritems()
     }
 
     # Plot everything: input chirp, filtered chirp, and filter transfer function.
     plot_inputs('compare-%s-' % btype, input_t, input_x, fft_freq, input_fft)
 
+    colors = {
+        'bilinear': 'red',
+        'analytic0': 'green',
+        'analytic1': 'blue',
+    }
+
     plot_outputs('compare-%s-' % btype, input_t, fft_freq, [
-        (method_name, outputs[method_name], ffts[method_name]) for method_name in sorted(outputs.keys())
+        (method, colors[method], outputs[method], ffts[method]) for method in sorted(outputs.keys())
     ])
 
     plot_transfer_function('compare-%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
-        (method_name, ffts[method_name]) for method_name in sorted(outputs.keys())
+        (method, colors[method], ffts[method]) for method in sorted(outputs.keys())
     ])
 
 
@@ -158,8 +164,8 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
 
     plt.subplot(311)
 
-    for name, output, output_fft in outputs:
-        plt.plot(input_t, output, label=name)
+    for name, color, output, output_fft in outputs:
+        plt.plot(input_t, output, label=name, color=color)
 
     plt.grid()
     plt.xlabel('time')
@@ -167,8 +173,8 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
 
     plt.subplot(312)
 
-    for name, output, output_fft in outputs:
-        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)), label=name)
+    for name, color, output, output_fft in outputs:
+        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)), label=name, color=color)
 
     plt.grid()
     plt.xlabel('freq')
@@ -176,8 +182,8 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
 
     plt.subplot(313)
 
-    for name, output, output_fft in outputs:
-        plt.plot(fft_freq, np.unwrap(np.angle(output_fft)), label=name)
+    for name, color, output, output_fft in outputs:
+        plt.plot(fft_freq, np.unwrap(np.angle(output_fft)), label=name, color=color)
 
     plt.grid()
     plt.legend(loc='lower right')
@@ -196,8 +202,8 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.subplot(211)
     plt.plot(freqz_freq, 10 * np.log10(freqz_amplitude), '.', color='black', label='freqz')
 
-    for name, output_fft in outputs:
-        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)) - 10 * np.log10(np.abs(input_fft)), label=name)
+    for name, color, output_fft in outputs:
+        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)) - 10 * np.log10(np.abs(input_fft)), label=name, color=color)
 
     plt.grid()
     plt.ylabel('gain (dB)')
@@ -205,8 +211,8 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.subplot(212)
     plt.plot(freqz_freq, freqz_phase, '.', color='black', label='freqz')
 
-    for name, output_fft in outputs:
-        plt.plot(fft_freq, np.unwrap(np.angle(output_fft) - np.angle(input_fft)), label=name)
+    for name, color, output_fft in outputs:
+        plt.plot(fft_freq, np.unwrap(np.angle(output_fft) - np.angle(input_fft)), label=name, color=color)
 
     plt.grid()
     plt.xlabel('freq')
