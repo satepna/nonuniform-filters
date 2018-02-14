@@ -6,6 +6,76 @@ import matplotlib.pyplot as plt
 from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
 
 
+def scipy_filter(input_x, freq_bin_count, order, cutoff_freq, sample_freq, btype):
+    # Construct a digital filter with the parameters above using scipy's butterworth design function.
+    nyquist_freq = sample_freq / 2.0
+    b_digital, a_digital = sig.butter(order, cutoff_freq / nyquist_freq, btype=btype)
+
+    # Ask scipy to compute the response of the filter we just designed. Convert the frequency vector from digital
+    # angular frequency (0 to pi) to analog cyclic frequency (0 to sample_freq) so that we can plot it together with
+    # fft_freq.
+    w, h = sig.freqz(b_digital, a_digital, worN=freq_bin_count)
+    freqz_freq = w / np.pi * nyquist_freq
+    freqz_amplitude = np.abs(h)
+    freqz_phase = np.unwrap(np.angle(h))
+
+    # Apply the digital filter that scipy gave us using scipy's lfilter function.
+    filtered_output = sig.lfilter(b_digital, a_digital, input_x)
+
+    return freqz_freq, freqz_amplitude, freqz_phase, filtered_output
+
+
+def statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype):
+    # Design an analog butterworth filter to our example parameters. Pre-warp the cutoff frequency since we are actually
+    # going to use these zeros and poles to build a digital filter. We don'input_t actually want the analog response, even
+    # though we're specifying the filter via analog parameters.
+    filter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True, btype=btype)
+
+    # Convert the filter specification to the format described in the paper, and apply the filter.
+    alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
+    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, bilinear_step, input_t, input_x)
+
+    return filtered_output
+
+
+def analyze_filter(btype):
+    # Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're
+    # pretty arbitrarily chosen.
+    sample_freq = 1.0
+    nyquist_freq = sample_freq / 2.0
+
+    # Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
+    cutoff_freq = 0.5 * nyquist_freq
+    order = 2
+
+    # Make a chirp input to pass through our filters.
+    input_t, input_x, fft_freq, input_fft = make_inputs(sample_freq)
+
+    # Create, analyze, and apply a filter using scipy's built-in functions.
+    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(
+        input_x, len(fft_freq), order, cutoff_freq, sample_freq, btype)
+
+    # Create and apply a filter using this paper's method.
+    statespace_output  = statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype)
+
+    # FFT the result of filtering the chirp by both types of filters.
+    lfilter_fft = fft.fft(lfilter_output)[0:len(fft_freq)]
+    statespace_fft = fft.fft(statespace_output)[0:len(fft_freq)]
+
+    # Plot everything: input chirp, filtered chirp, and filter transfer function.
+    plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
+
+    plot_outputs('%s-' % btype, input_t, fft_freq, [
+        ('lfilter', lfilter_output, lfilter_fft),
+        ('statespace', statespace_output, statespace_fft),
+    ])
+
+    plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+        ('lfilter', lfilter_fft),
+        ('statespace', statespace_fft),
+    ])
+
+
 def make_inputs(sample_freq):
     """
     Create a time vector at that sampling rate, and generate a chirp going from 0 to the Nyquist frequency across that
@@ -120,76 +190,6 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.legend()
 
     plt.savefig('%sresponse.png' % name_prefix)
-
-
-def scipy_filter(input_x, freq_bin_count, order, cutoff_freq, sample_freq, btype):
-    # Construct a digital filter with the parameters above using scipy's butterworth design function.
-    nyquist_freq = sample_freq / 2.0
-    b_digital, a_digital = sig.butter(order, cutoff_freq / nyquist_freq, btype=btype)
-
-    # Ask scipy to compute the response of the filter we just designed. Convert the frequency vector from digital
-    # angular frequency (0 to pi) to analog cyclic frequency (0 to sample_freq) so that we can plot it together with
-    # fft_freq.
-    w, h = sig.freqz(b_digital, a_digital, worN=freq_bin_count)
-    freqz_freq = w / np.pi * nyquist_freq
-    freqz_amplitude = np.abs(h)
-    freqz_phase = np.unwrap(np.angle(h))
-
-    # Apply the digital filter that scipy gave us using scipy's lfilter function.
-    filtered_output = sig.lfilter(b_digital, a_digital, input_x)
-
-    return freqz_freq, freqz_amplitude, freqz_phase, filtered_output
-
-
-def statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype):
-    # Design an analog butterworth filter to our example parameters. Pre-warp the cutoff frequency since we are actually
-    # going to use these zeros and poles to build a digital filter. We don'input_t actually want the analog response, even
-    # though we're specifying the filter via analog parameters.
-    filter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True, btype=btype)
-
-    # Convert the filter specification to the format described in the paper, and apply the filter.
-    alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
-    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, bilinear_step, input_t, input_x)
-
-    return filtered_output
-
-
-def analyze_filter(btype):
-    # Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're
-    # pretty arbitrarily chosen.
-    sample_freq = 1.0
-    nyquist_freq = sample_freq / 2.0
-
-    # Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
-    cutoff_freq = 0.5 * nyquist_freq
-    order = 2
-
-    # Make a chirp input to pass through our filters.
-    input_t, input_x, fft_freq, input_fft = make_inputs(sample_freq)
-
-    # Create, analyze, and apply a filter using scipy's built-in functions.
-    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(
-        input_x, len(fft_freq), order, cutoff_freq, sample_freq, btype)
-
-    # Create and apply a filter using this paper's method.
-    statespace_output  = statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype)
-
-    # FFT the result of filtering the chirp by both types of filters.
-    lfilter_fft = fft.fft(lfilter_output)[0:len(fft_freq)]
-    statespace_fft = fft.fft(statespace_output)[0:len(fft_freq)]
-
-    # Plot everything: input chirp, filtered chirp, and filter transfer function.
-    plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
-
-    plot_outputs('%s-' % btype, input_t, fft_freq, [
-        ('lfilter', lfilter_output, lfilter_fft),
-        ('statespace', statespace_output, statespace_fft),
-    ])
-
-    plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
-        ('lfilter', lfilter_fft),
-        ('statespace', statespace_fft),
-    ])
 
 
 if __name__ == '__main__':
