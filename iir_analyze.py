@@ -57,12 +57,12 @@ def analyze_filter(sample_freq, cutoff_freq, order, btype):
     plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
 
     plot_outputs('%s-' % btype, input_t, fft_freq, [
-        ('lfilter', 'black', lfilter_output, lfilter_fft),
+        ('lfilter', 'blue', lfilter_output, lfilter_fft),
         ('statespace', 'red', statespace_output, statespace_fft),
     ])
 
     plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
-        ('lfilter', 'black', lfilter_fft),
+        ('lfilter', 'blue', lfilter_fft),
         ('statespace', 'red', statespace_fft),
     ])
 
