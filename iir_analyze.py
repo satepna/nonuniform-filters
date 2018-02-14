@@ -25,7 +25,7 @@ def scipy_filter(input_x, freq_bin_count, order, cutoff_freq, sample_freq, btype
     return freqz_freq, freqz_amplitude, freqz_phase, filtered_output
 
 
-def statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype):
+def statespace_filter(method, input_t, input_x, order, cutoff_freq, sample_freq, btype):
     # Design an analog butterworth filter to our example parameters. Pre-warp the cutoff frequency since we are actually
     # going to use these zeros and poles to build a digital filter. We don'input_t actually want the analog response, even
     # though we're specifying the filter via analog parameters.
@@ -33,21 +33,12 @@ def statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype):
 
     # Convert the filter specification to the format described in the paper, and apply the filter.
     alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
-    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, bilinear_step, input_t, input_x)
+    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, method, input_t, input_x)
 
     return filtered_output
 
 
-def analyze_filter(btype):
-    # Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're
-    # pretty arbitrarily chosen.
-    sample_freq = 1.0
-    nyquist_freq = sample_freq / 2.0
-
-    # Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
-    cutoff_freq = 0.5 * nyquist_freq
-    order = 2
-
+def analyze_filter(sample_freq, cutoff_freq, order, btype):
     # Make a chirp input to pass through our filters.
     input_t, input_x, fft_freq, input_fft = make_inputs(sample_freq)
 
@@ -56,7 +47,7 @@ def analyze_filter(btype):
         input_x, len(fft_freq), order, cutoff_freq, sample_freq, btype)
 
     # Create and apply a filter using this paper's method.
-    statespace_output  = statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype)
+    statespace_output  = statespace_filter(bilinear_step, input_t, input_x, order, cutoff_freq, sample_freq, btype)
 
     # FFT the result of filtering the chirp by both types of filters.
     lfilter_fft = fft.fft(lfilter_output)[0:len(fft_freq)]
@@ -73,6 +64,39 @@ def analyze_filter(btype):
     plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
         ('lfilter', lfilter_fft),
         ('statespace', statespace_fft),
+    ])
+
+
+def compare_methods(sample_freq, cutoff_freq, order, btype):
+    # Make a chirp input to pass through our filters.
+    input_t, input_x, fft_freq, input_fft = make_inputs(sample_freq)
+
+    # Create, analyze, and apply a filter using scipy's built-in functions.
+    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(
+        input_x, len(fft_freq), order, cutoff_freq, sample_freq, btype)
+
+    # Create and apply a filter using this paper's method, using several integration techniques.
+    outputs = {
+        # 'euler':     statespace_filter(euler_step,     input_t, input_x, order, cutoff_freq, sample_freq, btype),
+        'bilinear':  statespace_filter(bilinear_step,  input_t, input_x, order, cutoff_freq, sample_freq, btype),
+        'analytic0': statespace_filter(analytic0_step, input_t, input_x, order, cutoff_freq, sample_freq, btype),
+        'analytic1': statespace_filter(analytic1_step, input_t, input_x, order, cutoff_freq, sample_freq, btype),
+    }
+
+    # FFT the result of filtering the chirp by all types of filters.
+    ffts = {
+        method_name: fft.fft(output)[0:len(fft_freq)] for method_name, output in outputs.iteritems()
+    }
+
+    # Plot everything: input chirp, filtered chirp, and filter transfer function.
+    plot_inputs('compare-%s-' % btype, input_t, input_x, fft_freq, input_fft)
+
+    plot_outputs('compare-%s-' % btype, input_t, fft_freq, [
+        (method_name, outputs[method_name], ffts[method_name]) for method_name in sorted(outputs.keys())
+    ])
+
+    plot_transfer_function('compare-%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+        (method_name, ffts[method_name]) for method_name in sorted(outputs.keys())
     ])
 
 
@@ -170,7 +194,7 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.figure()
 
     plt.subplot(211)
-    plt.plot(freqz_freq, 10 * np.log10(freqz_amplitude), color='black', label='freqz')
+    plt.plot(freqz_freq, 10 * np.log10(freqz_amplitude), '.', color='black', label='freqz')
 
     for name, output_fft in outputs:
         plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)) - 10 * np.log10(np.abs(input_fft)), label=name)
@@ -179,7 +203,7 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.ylabel('gain (dB)')
 
     plt.subplot(212)
-    plt.plot(freqz_freq, freqz_phase, color='black', label='freqz')
+    plt.plot(freqz_freq, freqz_phase, '.', color='black', label='freqz')
 
     for name, output_fft in outputs:
         plt.plot(fft_freq, np.unwrap(np.angle(output_fft) - np.angle(input_fft)), label=name)
@@ -193,5 +217,18 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
 
 
 if __name__ == '__main__':
-    analyze_filter('lowpass')
-    analyze_filter('highpass')
+    # Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're
+    # pretty arbitrarily chosen.
+    sample_freq = 1.0
+
+    # Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
+    cutoff_freq = 0.5 * (sample_freq / 2.0)
+    order = 2
+
+    # Analyze the method in this paper compared to scipy.
+    analyze_filter(sample_freq, cutoff_freq, order, 'lowpass')
+    analyze_filter(sample_freq, cutoff_freq, order, 'highpass')
+
+    # Compare methods in this paper.
+    compare_methods(sample_freq, cutoff_freq, order, 'lowpass')
+    compare_methods(sample_freq, cutoff_freq, order, 'highpass')
