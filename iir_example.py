@@ -8,8 +8,8 @@ from iir import prewarp, analog_zpk_to_alpha_beta, bilinear_step, apply_filter
 
 def make_input(signal_freq, dt):
     # Make a time vector that starts at dt, but drops to dt/5 after the halfway mark.
-    t = np.arange(0.0, 2.0, dt)
-    mask = [i for i in xrange(len(t)) if i < 50 or i % 5 == 0]
+    t = np.arange(-1.0, 2.0, dt)
+    mask = [i for i in xrange(len(t)) if t[i] <= 0 or i % 5 == 0]
     t = t[mask]
 
     # Make a noisy sine wave basedo n that time vector.
@@ -26,8 +26,8 @@ def make_timedomain_plots():
     alpha, beta = analog_zpk_to_alpha_beta(sig.butter(2, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True))
 
     # Make our example input.
-    signal_freq = 1.0
     dt = 1.0 / sample_freq
+    signal_freq = 1.0
     (t, x) = make_input(signal_freq, dt)
 
     # Filter using scipy for reference.
