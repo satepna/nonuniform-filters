@@ -21,6 +21,7 @@ def make_input(signal_freq, dt):
 def make_timedomain_plots():
     # Design our lowpass filter.
     sample_freq = 50.0
+    nyquist_freq = sample_freq / 2.0
     cutoff_freq = 5.0
     alpha, beta = analog_zpk_to_alpha_beta(sig.butter(2, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True))
 
@@ -30,7 +31,7 @@ def make_timedomain_plots():
     (t, x) = make_input(signal_freq, dt)
 
     # Filter using scipy for reference.
-    b_digital, a_digital = sig.butter(2, cutoff_freq / sample_freq)
+    b_digital, a_digital = sig.butter(2, cutoff_freq / nyquist_freq)
     lfilter_output = sig.lfilter(b_digital, a_digital, x)
 
     # Filter using the algorithm from this paper.
