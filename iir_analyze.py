@@ -6,22 +6,13 @@ import matplotlib.pyplot as plt
 from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
 
 
-# Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're pretty
-# arbitrarily chosen.
-sample_freq = 1.0
-nyquist_freq = sample_freq / 2.0
-
-# Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
-cutoff_freq = 0.5 * nyquist_freq
-order = 2
-
-
-def make_inputs():
+def make_inputs(sample_freq):
     """
     Create a time vector at that sampling rate, and generate a chirp going from 0 to the Nyquist frequency across that
     time vector. We'll use this chirp to characterize our filters.
     """
     t_max = 500.0
+    nyquist_freq = sample_freq / 2.0
 
     input_t = np.linspace(0.0, t_max, t_max * sample_freq, endpoint=False)
     input_x = sig.chirp(input_t, 0.0, t_max, nyquist_freq, phi=90.0)
@@ -38,7 +29,7 @@ def make_inputs():
     return input_t, input_x, fft_freq, input_fft
 
 
-def plot_inputs(input_t, input_x, fft_freq, input_fft):
+def plot_inputs(name_prefix, input_t, input_x, fft_freq, input_fft):
     """
     Plot this input signal and its FFT, for reference.
     """
@@ -62,10 +53,10 @@ def plot_inputs(input_t, input_x, fft_freq, input_fft):
     plt.xlabel('freq')
     plt.ylabel('phase (rad)')
 
-    plt.savefig('chirp.png')
+    plt.savefig('%schirp.png' % name_prefix)
 
 
-def plot_outputs(input_t, fft_freq, outputs):
+def plot_outputs(name_prefix, input_t, fft_freq, outputs):
     """
     Plot the result of filtering the input chirp by several filters.
     """
@@ -99,10 +90,10 @@ def plot_outputs(input_t, fft_freq, outputs):
     plt.xlabel('freq')
     plt.ylabel('phase (rad)')
 
-    plt.savefig('chirp-filt.png')
+    plt.savefig('%schirp-filt.png' % name_prefix)
 
 
-def plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
+def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
     """
     Compute and plot the response of several filters by comparing the chirp input to each filter's output.
     """
@@ -115,7 +106,6 @@ def plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft
         plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)) - 10 * np.log10(np.abs(input_fft)), label=name)
 
     plt.grid()
-    plt.xlabel('freq')
     plt.ylabel('gain (dB)')
 
     plt.subplot(212)
@@ -129,17 +119,18 @@ def plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft
     plt.ylabel('phase delay (rad)')
     plt.legend()
 
-    plt.savefig('response.png')
+    plt.savefig('%sresponse.png' % name_prefix)
 
 
-def scipy_filter(input_x, worN):
+def scipy_filter(input_x, freq_bin_count, order, cutoff_freq, sample_freq, btype):
     # Construct a digital filter with the parameters above using scipy's butterworth design function.
-    b_digital, a_digital = sig.butter(order, cutoff_freq / nyquist_freq)
+    nyquist_freq = sample_freq / 2.0
+    b_digital, a_digital = sig.butter(order, cutoff_freq / nyquist_freq, btype=btype)
 
     # Ask scipy to compute the response of the filter we just designed. Convert the frequency vector from digital
     # angular frequency (0 to pi) to analog cyclic frequency (0 to sample_freq) so that we can plot it together with
     # fft_freq.
-    w, h = sig.freqz(b_digital, a_digital, worN=worN)
+    w, h = sig.freqz(b_digital, a_digital, worN=freq_bin_count)
     freqz_freq = w / np.pi * nyquist_freq
     freqz_amplitude = np.abs(h)
     freqz_phase = np.unwrap(np.angle(h))
@@ -150,11 +141,11 @@ def scipy_filter(input_x, worN):
     return freqz_freq, freqz_amplitude, freqz_phase, filtered_output
 
 
-def statespace_filter(input_t, input_x):
+def statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype):
     # Design an analog butterworth filter to our example parameters. Pre-warp the cutoff frequency since we are actually
     # going to use these zeros and poles to build a digital filter. We don'input_t actually want the analog response, even
     # though we're specifying the filter via analog parameters.
-    filter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True)
+    filter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True, btype=btype)
 
     # Convert the filter specification to the format described in the paper, and apply the filter.
     alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
@@ -162,31 +153,45 @@ def statespace_filter(input_t, input_x):
 
     return filtered_output
 
-def make_freqdomain_plots():
+
+def analyze_filter(btype):
+    # Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're
+    # pretty arbitrarily chosen.
+    sample_freq = 1.0
+    nyquist_freq = sample_freq / 2.0
+
+    # Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
+    cutoff_freq = 0.5 * nyquist_freq
+    order = 2
+
     # Make a chirp input to pass through our filters.
-    input_t, input_x, fft_freq, input_fft = make_inputs()
-    plot_inputs(input_t, input_x, fft_freq, input_fft)
+    input_t, input_x, fft_freq, input_fft = make_inputs(sample_freq)
 
     # Create, analyze, and apply a filter using scipy's built-in functions.
-    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(input_x, len(fft_freq))
+    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(
+        input_x, len(fft_freq), order, cutoff_freq, sample_freq, btype)
 
     # Create and apply a filter using this paper's method.
-    statespace_output  = statespace_filter(input_t, input_x)
+    statespace_output  = statespace_filter(input_t, input_x, order, cutoff_freq, sample_freq, btype)
 
     # FFT the result of filtering the chirp by both types of filters.
     lfilter_fft = fft.fft(lfilter_output)[0:len(fft_freq)]
     statespace_fft = fft.fft(statespace_output)[0:len(fft_freq)]
 
-    plot_outputs(input_t, fft_freq, [
+    # Plot everything: input chirp, filtered chirp, and filter transfer function.
+    plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
+
+    plot_outputs('%s-' % btype, input_t, fft_freq, [
         ('lfilter', lfilter_output, lfilter_fft),
         ('statespace', statespace_output, statespace_fft),
     ])
 
-    # Plot the filter responses computed from the FFTs, to compare to the designed filter response.
-    plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+    plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
         ('lfilter', lfilter_fft),
         ('statespace', statespace_fft),
     ])
 
+
 if __name__ == '__main__':
-    make_freqdomain_plots()
+    analyze_filter('lowpass')
+    analyze_filter('highpass')
