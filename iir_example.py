@@ -9,7 +9,7 @@ from iir import prewarp, analog_zpk_to_alpha_beta, bilinear_step, apply_filter
 def make_input(signal_freq, dt):
     # Make a time vector that starts at dt, but drops to dt/5 after the halfway mark.
     t = np.arange(0.0, 2.0, dt)
-    mask = [i for i in range(len(t)) if i < 50 or i % 5 == 0]
+    mask = [i for i in xrange(len(t)) if i < 50 or i % 5 == 0]
     t = t[mask]
 
     # Make a noisy sine wave basedo n that time vector.

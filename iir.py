@@ -219,7 +219,7 @@ def apply_filter(alpha, beta, first_dt, method, t, x):
     new_input = [0.0, 0.0]
 
     # Populate the output vector by applying the step method at each sample.
-    for i in range(len(t)):
+    for i in xrange(len(t)):
         # Shift in the new input.
         new_input[0] = new_input[1]
         new_input[1] = x[i]
