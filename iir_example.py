@@ -79,7 +79,7 @@ def make_timedomain_plots():
     plt.ylabel('group delay (s)')
     plt.grid()
 
-    plt.savefig('example-filter-design.png')
+    plt.savefig('plots/example-filter-design.png')
 
     # Plot the time-domain response of this signal, with guidelines for expected gain.
     plt.figure()
@@ -95,7 +95,7 @@ def make_timedomain_plots():
     plt.grid()
     plt.legend()
 
-    plt.savefig('example-timedomain-output.png')
+    plt.savefig('plots/example-timedomain-output.png')
 
 
 if __name__ == '__main__':

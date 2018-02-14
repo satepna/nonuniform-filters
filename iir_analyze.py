@@ -147,7 +147,7 @@ def plot_inputs(name_prefix, input_t, input_x, fft_freq, input_fft):
     plt.xlabel('freq')
     plt.ylabel('phase (rad)')
 
-    plt.savefig('%schirp.png' % name_prefix)
+    plt.savefig('plots/%schirp.png' % name_prefix)
 
 
 def plot_outputs(name_prefix, input_t, fft_freq, outputs):
@@ -184,7 +184,7 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
     plt.xlabel('freq')
     plt.ylabel('phase (rad)')
 
-    plt.savefig('%schirp-filt.png' % name_prefix)
+    plt.savefig('plots/%schirp-filt.png' % name_prefix)
 
 
 def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
@@ -213,7 +213,7 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.ylabel('phase (rad)')
     plt.legend()
 
-    plt.savefig('%sresponse.png' % name_prefix)
+    plt.savefig('plots/%sresponse.png' % name_prefix)
 
 
 if __name__ == '__main__':
