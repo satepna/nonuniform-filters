@@ -66,6 +66,7 @@ def make_timedomain_plots():
     plt.scatter([signal_freq], [expected_phase], facecolors='none', edgecolors='red')
     plt.xlim(0, sample_freq / 2)
     plt.ylim(-np.pi, 0)
+    plt.xlabel('freq (Hz)')
     plt.ylabel('phase (rad)')
     plt.grid()
 
