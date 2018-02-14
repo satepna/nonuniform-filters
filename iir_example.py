@@ -3,7 +3,7 @@ import scipy.signal as sig
 import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 
-from iir import compute_ABCD, euler_step, bilinear_step, analytic0_step, analytic1_step, make_output
+from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output
 
 def make_input(signal_freq, dt):
     t = np.arange(0.0, 2.0, dt)

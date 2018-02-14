@@ -4,6 +4,44 @@
 import numpy as np
 import scipy.linalg as linalg
 
+def prewarp(freq, sample_freq):
+    return 2 * sample_freq * np.tan(np.pi * freq / sample_freq)
+
+def analog_zpk_to_alpha_beta(zpk):
+    """
+    Convert "analog zeros, poles, gain" format returned by scipy filter design functions to analog transfer function
+    polynomial coefficients in the convention used by this paper.
+    """
+    zeros, poles, gain = zpk
+
+    # Multiply out zeros to get transfer function numerator coefficients. np.poly() returns a bare float rather than an
+    # array with 1 element if its input is empty; manually handle that case so we always get an array.
+    if len(zeros) > 0:
+        alpha = np.poly(zeros)
+    else:
+        alpha = np.array([1.0])
+
+    # Multiply out poles to get transfer function denominator coefficients.
+    if len(poles) > 0:
+        beta = np.poly(poles)
+    else:
+        beta = np.array([1.0])
+
+    # Reverse the order of the coefficients. np.poly() returns highest-power first, but this paper uses lowest-power
+    # first.
+    alpha = alpha[::-1]
+    beta = beta[::-1]
+
+    # Scale numerator by the overall system gain.
+    alpha *= gain
+
+    # Normalize so that the highest-power term in the denominator is 1.0.
+    assert beta[-1] != 0.0
+    alpha = np.divide(alpha, beta[-1])
+    beta = np.divide(beta, beta[-1])
+
+    return alpha, beta
+
 def compute_ABCD(alpha, beta):
     # pad alpha if it's too short (fewer zeros than poles)
     if len(alpha) < len(beta):
@@ -46,11 +84,6 @@ def euler_step(ABCD, inputs, state, dt):
 
     new_state = np.dot(I + dt * A, state) + np.dot(B * dt, prev_input)
     output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
-
-    # print '-----'
-    # print state
-    # print new_state
-    # print output
 
     return new_state, output
 
@@ -104,7 +137,7 @@ def analytic1_step(ABCD, inputs, state, dt):
 
     du_dt = (current_input - prev_input) / dt
 
-    # first order hold
+    # first order interpolation
     new_state = np.dot(expAdt, state) - \
                 np.dot(np.dot(invA, I - expAdt), B) * prev_input + \
                 np.dot(np.dot(invA2, I - np.dot(expAdt, I - A * dt)), B) * du_dt
