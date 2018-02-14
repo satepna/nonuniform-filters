@@ -3,7 +3,7 @@ import scipy.signal as sig
 import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 
-from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
+from iir import prewarp, analog_zpk_to_alpha_beta, bilinear_step, apply_filter
 
 
 def make_input(signal_freq, dt):
@@ -34,7 +34,7 @@ def make_timedomain_plots():
     lfilter_output = sig.lfilter(b_digital, a_digital, x)
 
     # Filter using the algorithm from this paper.
-    statespace_output = make_output(alpha, beta, dt, bilinear_step, t, x)
+    statespace_output = apply_filter(alpha, beta, dt, bilinear_step, t, x)
 
     # Compute the frequency response of the filter we designed.
     w, h = sig.freqz(b_digital, a_digital)

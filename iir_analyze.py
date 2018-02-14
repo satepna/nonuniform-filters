@@ -3,7 +3,7 @@ import scipy.signal as sig
 import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 
-from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
+from iir import prewarp, analog_zpk_to_alpha_beta, euler_step, bilinear_step, analytic0_step, analytic1_step, apply_filter
 
 
 def scipy_filter(input_x, freq_bin_count, order, cutoff_freq, sample_freq, btype):
@@ -33,7 +33,7 @@ def statespace_filter(method, input_t, input_x, order, cutoff_freq, sample_freq,
 
     # Convert the filter specification to the format described in the paper, and apply the filter.
     alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
-    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, method, input_t, input_x)
+    filtered_output  = apply_filter(alpha, beta, 1.0 / sample_freq, method, input_t, input_x)
 
     return filtered_output
 
