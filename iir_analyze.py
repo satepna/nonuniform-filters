@@ -5,141 +5,188 @@ import matplotlib.pyplot as plt
 
 from iir import euler_step, bilinear_step, analytic0_step, analytic1_step, make_output, prewarp, analog_zpk_to_alpha_beta
 
-def make_freqdomain_plots():
-    nyquist_freq = 1.0
-    sample_freq = 2.0 * nyquist_freq
-    cutoff_freq = 0.5 * nyquist_freq
-    order = 1
 
-    # make inputs
-    t_max = 4000.0
-    t = np.linspace(0.0, t_max, t_max * sample_freq, endpoint=False)
-    x = sig.chirp(t, 0.0, t_max, nyquist_freq)
+# Set the parameters of the sampling system. All the filter parameters are set with respect to these, so they're pretty
+# arbitrarily chosen.
+sample_freq = 1.0
+nyquist_freq = sample_freq / 2.0
 
-    # plot fft of the chirp for reference
-    y = fft.fft(x)
-    y = y[0:len(y)/2] # only look at positive frequency components
+# Set filter parameters. Arbitrarily make a second-order filter with cutoff frequency in the middle of the range.
+cutoff_freq = 0.5 * nyquist_freq
+order = 2
 
+
+def make_inputs():
+    """
+    Create a time vector at that sampling rate, and generate a chirp going from 0 to the Nyquist frequency across that
+    time vector. We'll use this chirp to characterize our filters.
+    """
+    t_max = 500.0
+
+    input_t = np.linspace(0.0, t_max, t_max * sample_freq, endpoint=False)
+    input_x = sig.chirp(input_t, 0.0, t_max, nyquist_freq, phi=90.0)
+
+    # Compute the FFT of the input so that we can compare it to the result of passing this input through various
+    # filters.
+    input_fft = fft.fft(input_x)
+    input_fft = input_fft[0:len(input_fft)/2] # only look at positive frequency components
+
+    fft_freq = fft.fftfreq(len(input_x), d=t_max / len(input_t))
+    fft_freq = fft_freq[0:len(fft_freq) / 2]
+
+    # Return time-domain and frequency-domain representations of the chirp.
+    return input_t, input_x, fft_freq, input_fft
+
+
+def plot_inputs(input_t, input_x, fft_freq, input_fft):
+    """
+    Plot this input signal and its FFT, for reference.
+    """
     plt.figure()
-    plt.plot(t, x)
+
+    plt.subplot(311)
+    plt.plot(input_t, input_x)
     plt.grid()
+    plt.xlabel('time')
+    plt.ylabel('chirp signal')
+
+    plt.subplot(312)
+    plt.plot(fft_freq, 10.0 * np.log10(np.abs(input_fft)))
+    plt.grid()
+    plt.xlabel('freq')
+    plt.ylabel('amplitude (dB)')
+
+    plt.subplot(313)
+    plt.plot(fft_freq, np.unwrap(np.angle(input_fft)))
+    plt.grid()
+    plt.xlabel('freq')
+    plt.ylabel('phase (rad)')
+
     plt.savefig('chirp.png')
 
+
+def plot_outputs(input_t, fft_freq, outputs):
+    """
+    Plot the result of filtering the input chirp by several filters.
+    """
     plt.figure()
 
-    f = fft.fftfreq(len(x), d=1.0 / sample_freq)
-    f = f[0:len(f) / 2]
+    plt.subplot(311)
 
-    plt.subplot(211)
-    plt.plot(f, np.abs(y))
+    for name, output, output_fft in outputs:
+        plt.plot(input_t, output, label=name)
+
     plt.grid()
+    plt.xlabel('time')
+    plt.ylabel('filtered chirp signal')
 
-    plt.subplot(212)
-    plt.plot(f, np.unwrap(np.angle(y)))
+    plt.subplot(312)
+
+    for name, output, output_fft in outputs:
+        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)), label=name)
+
     plt.grid()
+    plt.xlabel('freq')
+    plt.ylabel('amplitude (dB)')
 
-    plt.savefig('chirp-fft.png')
+    plt.subplot(313)
 
-    # simple zero at s=-cutoff_freq
-    # alpha = [1.0]
-    # beta = [1.0, 1.0/cutoff_freq]
-    # pre-warp frequency since we are going to use this filter info to build a digital filter.
-    butter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True)
-    alpha, beta = analog_zpk_to_alpha_beta(butter_zpk)
+    for name, output, output_fft in outputs:
+        plt.plot(fft_freq, np.unwrap(np.angle(output_fft)), label=name)
 
-    # print '---'
-    # print butter_zpk
-    # print analog_zpk_to_alpha_beta(butter_zpk)
-    # print alpha, beta
-    # print '---'
+    plt.grid()
+    plt.legend(loc='lower right')
+    plt.xlabel('freq')
+    plt.ylabel('phase (rad)')
 
-    # filter chirp using scipy.
-    # need to flip the coefficients since alpha and beta are in increasing order but apparently bilinear() needs them in
-    # decreasing order.
-    #b_digital, a_digital = sig.filter_design.bilinear(alpha[::-1], beta[::-1], sample_freq)
-    b_digital, a_digital = sig.butter(order, cutoff_freq, output='ba', analog=False)
-    lfilter_outputs = sig.lfilter(b_digital, a_digital, x)
+    plt.savefig('chirp-filt.png')
 
-    w, h = sig.freqz(b_digital, a_digital, worN=len(f))
-    expected_freq = w / np.pi
-    expected_phase = np.unwrap(np.angle(h))
-    expected_amplitude = np.abs(h)
 
-    # filter with this paper's method
-    euler_outputs  = make_output(alpha, beta, 1.0 / sample_freq, euler_step, t, x)
-    bilinear_outputs  = make_output(alpha, beta, 1.0 / sample_freq, bilinear_step, t, x)
-    analytic0_outputs  = make_output(alpha, beta, 1.0 / sample_freq, analytic0_step, t, x)
-    analytic1_outputs  = make_output(alpha, beta, 1.0 / sample_freq, analytic1_step, t, x)
-
-    # fft the filtered chirp
-    filtered_y = fft.fft(lfilter_outputs)
-    filtered_y = filtered_y[0:len(filtered_y)/2]
-
-    filtered_euler = fft.fft(euler_outputs)
-    filtered_euler = filtered_euler[0:len(filtered_euler)/2]
-
-    filtered_bilinear = fft.fft(bilinear_outputs)
-    filtered_bilinear = filtered_bilinear[0:len(filtered_bilinear)/2]
-
-    filtered_analytic0 = fft.fft(analytic0_outputs)
-    filtered_analytic0 = filtered_analytic0[0:len(filtered_analytic0)/2]
-
-    filtered_analytic1 = fft.fft(analytic1_outputs)
-    filtered_analytic1 = filtered_analytic1[0:len(filtered_analytic1)/2]
-
+def plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
+    """
+    Compute and plot the response of several filters by comparing the chirp input to each filter's output.
+    """
     plt.figure()
+
     plt.subplot(211)
-    plt.plot(f, np.abs(filtered_y))
+    plt.plot(freqz_freq, 10 * np.log10(freqz_amplitude), color='black', label='freqz')
+
+    for name, output_fft in outputs:
+        plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)) - 10 * np.log10(np.abs(input_fft)), label=name)
+
     plt.grid()
+    plt.xlabel('freq')
+    plt.ylabel('gain (dB)')
 
     plt.subplot(212)
-    plt.plot(f, np.unwrap(np.angle(filtered_y)))
-    plt.grid()
-    plt.savefig('chirp-filt-fft.png')
+    plt.plot(freqz_freq, freqz_phase, color='black', label='freqz')
 
-    # plot the difference of the original chirp spectrum and the filtered chirp spectrum
-    plt.figure()
-    plt.subplot(211)
-    plt.plot(f, 10 * np.log10(np.abs(filtered_y)) - 10 * np.log10(np.abs(y)))
-    # plt.plot(f, 10 * np.log10(np.abs(filtered_euler)) - 10 * np.log10(np.abs(y)))
-    plt.plot(f, 10 * np.log10(np.abs(filtered_bilinear)) - 10 * np.log10(np.abs(y)))
-    # plt.plot(f, 10 * np.log10(np.abs(filtered_analytic0)) - 10 * np.log10(np.abs(y)))
-    # plt.plot(f, 10 * np.log10(np.abs(filtered_analytic1)) - 10 * np.log10(np.abs(y)))
-    # plt.plot(f, 10 * np.log10(np.abs(filtered_y)))
-    plt.plot(expected_freq, 10 * np.log10(expected_amplitude), color='black')
-    plt.grid()
+    for name, output_fft in outputs:
+        plt.plot(fft_freq, np.unwrap(np.angle(output_fft) - np.angle(input_fft)), label=name)
 
-    plt.subplot(212)
-    plt.plot(f, np.unwrap(np.angle(filtered_y)) - np.unwrap(np.angle(y)), label='lfilter')
-    # plt.plot(f, np.unwrap(np.angle(filtered_euler)) - np.unwrap(np.angle(y)), label='euler')
-    plt.plot(f, np.unwrap(np.angle(filtered_bilinear)) - np.unwrap(np.angle(y)), label='bilinear')
-    # plt.plot(f, np.unwrap(np.angle(filtered_analytic0)) - np.unwrap(np.angle(y)), label='analytic0')
-    # plt.plot(f, np.unwrap(np.angle(filtered_analytic1)) - np.unwrap(np.angle(y)), label='analytic1')
-    # plt.plot(f, np.unwrap(np.angle(filtered_y)))
-    plt.plot(expected_freq, expected_phase, color='black', label='freqz')
-    plt.ylim(-np.pi, 0)
     plt.grid()
+    plt.xlabel('freq')
+    plt.ylabel('phase delay (rad)')
     plt.legend()
 
-    plt.savefig('chirp-filt-diff-fft.png')
+    plt.savefig('response.png')
 
-    pow_ref = np.sum(np.conj(h) * h) / np.max(np.abs(h))**2
-    projection_lfilter = np.sum(np.conj(filtered_y / y) * h) / (np.max(np.abs(filtered_y / y)) * np.max(np.abs(h)))
-    projection_euler = np.sum(np.conj(filtered_euler / y) * h) / (np.max(np.abs(filtered_euler / y)) * np.max(np.abs(h)))
-    projection_bilinear = np.sum(np.conj(filtered_bilinear / y) * h) / (np.max(np.abs(filtered_bilinear / y)) * np.max(np.abs(h)))
-    projection_analytic0 = np.sum(np.conj(filtered_analytic0 / y) * h) / (np.max(np.abs(filtered_analytic0 / y)) * np.max(np.abs(h)))
-    projection_analytic1 = np.sum(np.conj(filtered_analytic1 / y) * h) / (np.max(np.abs(filtered_analytic1 / y)) * np.max(np.abs(h)))
 
-    print np.abs(pow_ref), np.abs(projection_lfilter), np.abs(projection_euler), np.abs(projection_bilinear), np.abs(projection_analytic0), np.abs(projection_analytic1)
+def scipy_filter(input_x, worN):
+    # Construct a digital filter with the parameters above using scipy's butterworth design function.
+    b_digital, a_digital = sig.butter(order, cutoff_freq / nyquist_freq)
 
-    plt.figure()
-    plt.plot(t, lfilter_outputs, 'o')
-    # plt.plot(t, euler_outputs)
-    plt.plot(t, bilinear_outputs)
-    # plt.plot(t, analytic0_outputs)
-    # plt.plot(t, analytic1_outputs)
-    plt.savefig('chirp-outputs.png')
-    # plt.show()
+    # Ask scipy to compute the response of the filter we just designed. Convert the frequency vector from digital
+    # angular frequency (0 to pi) to analog cyclic frequency (0 to sample_freq) so that we can plot it together with
+    # fft_freq.
+    w, h = sig.freqz(b_digital, a_digital, worN=worN)
+    freqz_freq = w / np.pi * nyquist_freq
+    freqz_amplitude = np.abs(h)
+    freqz_phase = np.unwrap(np.angle(h))
+
+    # Apply the digital filter that scipy gave us using scipy's lfilter function.
+    filtered_output = sig.lfilter(b_digital, a_digital, input_x)
+
+    return freqz_freq, freqz_amplitude, freqz_phase, filtered_output
+
+
+def statespace_filter(input_t, input_x):
+    # Design an analog butterworth filter to our example parameters. Pre-warp the cutoff frequency since we are actually
+    # going to use these zeros and poles to build a digital filter. We don'input_t actually want the analog response, even
+    # though we're specifying the filter via analog parameters.
+    filter_zpk = sig.butter(order, prewarp(cutoff_freq, sample_freq), output='zpk', analog=True)
+
+    # Convert the filter specification to the format described in the paper, and apply the filter.
+    alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
+    filtered_output  = make_output(alpha, beta, 1.0 / sample_freq, bilinear_step, input_t, input_x)
+
+    return filtered_output
+
+def make_freqdomain_plots():
+    # Make a chirp input to pass through our filters.
+    input_t, input_x, fft_freq, input_fft = make_inputs()
+    plot_inputs(input_t, input_x, fft_freq, input_fft)
+
+    # Create, analyze, and apply a filter using scipy's built-in functions.
+    freqz_freq, freqz_amplitude, freqz_phase, lfilter_output = scipy_filter(input_x, len(fft_freq))
+
+    # Create and apply a filter using this paper's method.
+    statespace_output  = statespace_filter(input_t, input_x)
+
+    # FFT the result of filtering the chirp by both types of filters.
+    lfilter_fft = fft.fft(lfilter_output)[0:len(fft_freq)]
+    statespace_fft = fft.fft(statespace_output)[0:len(fft_freq)]
+
+    plot_outputs(input_t, fft_freq, [
+        ('lfilter', lfilter_output, lfilter_fft),
+        ('statespace', statespace_output, statespace_fft),
+    ])
+
+    # Plot the filter responses computed from the FFTs, to compare to the designed filter response.
+    plot_responses(freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+        ('lfilter', lfilter_fft),
+        ('statespace', statespace_fft),
+    ])
 
 if __name__ == '__main__':
     make_freqdomain_plots()
