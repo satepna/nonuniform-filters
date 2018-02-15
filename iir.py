@@ -107,30 +107,24 @@ def compute_ABCD(alpha, beta):
     return (A, B, C, D)
 
 
-def euler_step(ABCD, inputs, state, dt):
+def euler_step(ABCD, state, dt, prev_input, new_input):
     """
     Compute one step of the filter (new state and new output) by integrating using Euler's method.
     """
-
-    prev_input = inputs[-2]
-    current_input = inputs[-1]
 
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
 
     new_state = np.dot(I + dt * A, state) + np.dot(B * dt, prev_input)
-    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, new_input))
 
     return new_state, output
 
 
-def bilinear_step(ABCD, inputs, state, dt):
+def bilinear_step(ABCD, state, dt, prev_input, new_input):
     """
     Compute one step of the filter (new state and new output) by integrating using the bilinear method.
     """
-
-    prev_input = inputs[-2]
-    current_input = inputs[-1]
 
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
@@ -142,20 +136,17 @@ def bilinear_step(ABCD, inputs, state, dt):
     Psi = np.dot(Aminus_inv, Aplus)
     Lambda = np.dot(Aminus_inv, B * dt)
 
-    new_state = np.dot(Psi, state) + np.dot(Lambda, 0.5 * (prev_input + current_input))
-    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+    new_state = np.dot(Psi, state) + np.dot(Lambda, 0.5 * (prev_input + new_input))
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, new_input))
 
     return new_state, output
 
 
-def analytic0_step(ABCD, inputs, state, dt):
+def analytic0_step(ABCD, state, dt, prev_input, new_input):
     """
     Compute one step of the filter (new state and new output) by integrating analytically, assuming that the input was
     constant over the passed dt.
     """
-
-    prev_input = inputs[-2]
-    current_input = inputs[-1]
 
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
@@ -167,19 +158,16 @@ def analytic0_step(ABCD, inputs, state, dt):
     new_state = np.dot(expAdt, state) - \
                 np.dot(np.dot(invA, I - expAdt), B) * prev_input
 
-    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, new_input))
 
     return new_state, output
 
 
-def analytic1_step(ABCD, inputs, state, dt):
+def analytic1_step(ABCD, state, dt, prev_input, new_input):
     """
     Compute one step of the filter (new state and new output) by integrating analytically, assuming that the input was
     linear over the passed dt.
     """
-
-    prev_input = inputs[-2]
-    current_input = inputs[-1]
 
     (A, B, C, D) = ABCD
     I = np.identity(len(state))
@@ -188,14 +176,14 @@ def analytic1_step(ABCD, inputs, state, dt):
     invA = linalg.inv(A)
     invA2 = invA * invA
 
-    du_dt = (current_input - prev_input) / dt
+    du_dt = (new_input - prev_input) / dt
 
     # first order interpolation
     new_state = np.dot(expAdt, state) - \
                 np.dot(np.dot(invA, I - expAdt), B) * prev_input + \
                 np.dot(np.dot(invA2, I - np.dot(expAdt, I - A * dt)), B) * du_dt
 
-    output = np.asscalar(np.dot(C, new_state) + np.dot(D, current_input))
+    output = np.asscalar(np.dot(C, new_state) + np.dot(D, new_input))
 
     return new_state, output
 
@@ -215,16 +203,13 @@ def apply_filter(alpha, beta, first_dt, method, t, x):
     # Create the output vector.
     y = np.zeros_like(x)
 
-    # Create a list to hold the two most recent inputs.
-    new_input = [0.0, 0.0]
+    # Keep track of the previous input.
+    prev_input = 0.0
 
     # Populate the output vector by applying the step method at each sample.
     for i in xrange(len(t)):
-        # Shift in the new input.
-        new_input[0] = new_input[1]
-        new_input[1] = x[i]
-
-        # Step the filter forward by one sample.
-        state, y[i] = method(ABCD, new_input, state, first_dt if i == 0 else t[i] - t[i-1])
+        dt = first_dt if i == 0 else t[i] - t[i-1]
+        state, y[i] = method(ABCD, state, dt, prev_input, x[i])
+        prev_input = x[i]
 
     return y
