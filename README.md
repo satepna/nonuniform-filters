@@ -13,3 +13,8 @@ In this example, the input signal is a pure sinewave, but the time vector at whi
 
 You can see that `lfilter()` doesn't handle the changes in sampling rate well, but the method presented in this paper
 does.
+
+For uniformly-sampled signals, filters digitized using this method are just as good as filters digitized into the
+conventional "direct forms" used by `lfilter()`. For example:
+
+![freq-response](plots/lowpass-response.png)
