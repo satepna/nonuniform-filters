@@ -66,10 +66,8 @@ def make_noisy_signal_plot():
 
     plt.savefig('plots/example-filter-design.png')
 
-    # Plot the time-domain response of this signal, with guidelines for expected gain.
+    # Plot the time-domain response of this signal.
     plt.figure()
-    plt.axhline(y=expected_gain, color='gray')
-    plt.axhline(y=-expected_gain, color='gray')
     plt.plot(t, x, '.-', color='black', label='input')
     plt.plot(t, lfilter_output, '.-', color='gray', label='lfilter')
     plt.plot(t, statespace_output, '.-', color='red', label='statespace')
