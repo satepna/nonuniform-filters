@@ -29,7 +29,7 @@ def make_noisy_signal_plot():
     lfilter_output = sig.lfilter(b_digital, a_digital, x)
 
     # Filter using the algorithm from this paper.
-    statespace_output = apply_filter(alpha, beta, dt, bilinear_step, t, x)
+    statespace_output = apply_filter(alpha, beta, bilinear_step, t, x)
 
     # Compute the frequency response of the filter we designed.
     w, h = sig.freqz(b_digital, a_digital)
@@ -106,7 +106,7 @@ def make_noisy_timevector_plot():
     lfilter_output = sig.lfilter(b_digital, a_digital, x)
 
     # Filter using the algorithm from this paper.
-    statespace_output = apply_filter(alpha, beta, dt, bilinear_step, t, x)
+    statespace_output = apply_filter(alpha, beta, bilinear_step, t, x)
 
     # Plot the time-domain response of this signal.
     plt.figure()

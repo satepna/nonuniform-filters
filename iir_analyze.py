@@ -33,7 +33,7 @@ def statespace_filter(method, input_t, input_x, order, cutoff_freq, sample_freq,
 
     # Convert the filter specification to the format described in the paper, and apply the filter.
     alpha, beta = analog_zpk_to_alpha_beta(filter_zpk)
-    filtered_output  = apply_filter(alpha, beta, 1.0 / sample_freq, method, input_t, input_x)
+    filtered_output  = apply_filter(alpha, beta, method, input_t, input_x)
 
     return filtered_output
 

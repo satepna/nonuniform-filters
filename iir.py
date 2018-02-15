@@ -176,7 +176,7 @@ def analytic1_step(ABCD, state, dt, prev_input, new_input):
     invA = linalg.inv(A)
     invA2 = invA * invA
 
-    du_dt = (new_input - prev_input) / dt
+    du_dt = 0.0 if dt == 0.0 else (new_input - prev_input) / dt
 
     # first order interpolation
     new_state = np.dot(expAdt, state) - \
@@ -188,7 +188,7 @@ def analytic1_step(ABCD, state, dt, prev_input, new_input):
     return new_state, output
 
 
-def apply_filter(alpha, beta, first_dt, method, t, x):
+def apply_filter(alpha, beta, method, t, x):
     """
     Apply a transfer function to an input using a particular integration method (one of the *_step functions above).
     """
@@ -208,7 +208,7 @@ def apply_filter(alpha, beta, first_dt, method, t, x):
 
     # Populate the output vector by applying the step method at each sample.
     for i in xrange(len(t)):
-        dt = first_dt if i == 0 else t[i] - t[i-1]
+        dt = 0.0 if i == 0 else t[i] - t[i-1]
         state, y[i] = method(ABCD, state, dt, prev_input, x[i])
         prev_input = x[i]
 
