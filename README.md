@@ -4,7 +4,11 @@ The paper presents methods for implementing digital IIR filters which work corre
 a uniform rate. To see the difference that this makes, here's an example of a signal which changes sampling rate from
 50 Hz to 10 Hz at t=0, filtered using `scipy.signal.lfilter()` and with one of the methods from the paper:
 
-![filter-example](plots/example-timedomain-output.png)
+![filter-example](plots/example-timedomain-noisy-signal.png)
 
-You can see that `lfilter()` doesn't handle the change in sampling rate well, but the method presented in this paper
+In this example, the input signal is a pure sinewave, but the time vector at which it's sampled is very irregular:
+
+![filter-example](plots/example-timedomain-noisy-timevector.png)
+
+You can see that `lfilter()` doesn't handle the changes in sampling rate well, but the method presented in this paper
 does.
