@@ -56,12 +56,12 @@ def analyze_filter(sample_freq, cutoff_freq, order, btype):
     # Plot everything: input chirp, filtered chirp, and filter transfer function.
     plot_inputs('%s-' % btype, input_t, input_x, fft_freq, input_fft)
 
-    plot_outputs('%s-' % btype, input_t, fft_freq, [
+    plot_outputs('%s-' % btype, cutoff_freq, input_t, fft_freq, [
         ('lfilter', 'blue', lfilter_output, lfilter_fft),
         ('statespace', 'red', statespace_output, statespace_fft),
     ])
 
-    plot_transfer_function('%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+    plot_transfer_function('%s-' % btype, cutoff_freq, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
         ('lfilter', 'blue', lfilter_fft),
         ('statespace', 'red', statespace_fft),
     ])
@@ -97,11 +97,11 @@ def compare_methods(sample_freq, cutoff_freq, order, btype):
         'analytic1': 'blue',
     }
 
-    plot_outputs('compare-%s-' % btype, input_t, fft_freq, [
+    plot_outputs('compare-%s-' % btype, cutoff_freq, input_t, fft_freq, [
         (method, colors[method], outputs[method], ffts[method]) for method in sorted(outputs.keys())
     ])
 
-    plot_transfer_function('compare-%s-' % btype, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
+    plot_transfer_function('compare-%s-' % btype, cutoff_freq, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, [
         (method, colors[method], ffts[method]) for method in sorted(outputs.keys())
     ])
 
@@ -156,7 +156,7 @@ def plot_inputs(name_prefix, input_t, input_x, fft_freq, input_fft):
     plt.savefig('plots/%schirp.png' % name_prefix)
 
 
-def plot_outputs(name_prefix, input_t, fft_freq, outputs):
+def plot_outputs(name_prefix, cutoff_freq, input_t, fft_freq, outputs):
     """
     Plot the result of filtering the input chirp by several filters.
     """
@@ -173,6 +173,8 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
 
     plt.subplot(312)
 
+    plt.axvline(x=cutoff_freq, color='black')
+
     for name, color, output, output_fft in outputs:
         plt.plot(fft_freq, 10 * np.log10(np.abs(output_fft)), label=name, color=color)
 
@@ -181,6 +183,8 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
     plt.ylabel('amplitude (dB)')
 
     plt.subplot(313)
+
+    plt.axvline(x=cutoff_freq, color='black')
 
     for name, color, output, output_fft in outputs:
         plt.plot(fft_freq, np.unwrap(np.angle(output_fft)), label=name, color=color)
@@ -193,13 +197,14 @@ def plot_outputs(name_prefix, input_t, fft_freq, outputs):
     plt.savefig('plots/%schirp-filt.png' % name_prefix)
 
 
-def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
+def plot_transfer_function(name_prefix, cutoff_freq, freqz_freq, freqz_amplitude, freqz_phase, fft_freq, input_fft, outputs):
     """
     Compute and plot the response of several filters by comparing the chirp input to each filter's output.
     """
     plt.figure()
 
     plt.subplot(211)
+    plt.axvline(x=cutoff_freq, color='black')
     plt.plot(freqz_freq, 10 * np.log10(freqz_amplitude), '.', color='black', label='freqz')
 
     for name, color, output_fft in outputs:
@@ -209,6 +214,7 @@ def plot_transfer_function(name_prefix, freqz_freq, freqz_amplitude, freqz_phase
     plt.ylabel('gain (dB)')
 
     plt.subplot(212)
+    plt.axvline(x=cutoff_freq, color='black')
     plt.plot(freqz_freq, freqz_phase, '.', color='black', label='freqz')
 
     for name, color, output_fft in outputs:
